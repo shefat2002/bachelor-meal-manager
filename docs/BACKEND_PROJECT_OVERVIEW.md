@@ -1,6 +1,6 @@
 ## Overview
 
-This document outlines the high-level backend architecture for the Meal Manager Application, designed to scale from a single hostel mess to a universal platform serving multiple institutions, hostels, and users.
+This document outlines the high-level backend architecture for the Meal Manager Application, designed to scale from a single mess (shared kitchen) to a universal platform serving multiple institutions and users.
 
 ## Technology Stack
 
@@ -17,13 +17,13 @@ This document outlines the high-level backend architecture for the Meal Manager 
 
 ## Database Schema & Multi-Tenancy
 
-The system utilizes a multi-tenant architecture scoped by `HostelId`.
+The system utilizes a multi-tenant architecture scoped by `MessId`.
 
-* **Hostels Table**: Stores details of individual messes or hostels.
-* **UtilityTypes Table**: Allows Super Admins and Meal Managers to define custom utility types (e.g., Electricity, Wi-Fi, Cook Salary) per hostel.
+* **Messes Table**: Stores details of individual messes.
+* **UtilityTypes Table**: Allows Super Admins and Meal Managers to define custom utility types (e.g., Electricity, Wi-Fi, Cook Salary) per Mess.
 * **Members Table**: Stores basic user information (Name, Phone Number).
-* **MembersHostels Table**: Manages the many-to-many relationship of users belonging to multiple hostels, including joining/leaving logic and role assignments.
-* **DailyMeals Table**: Tracks meal participation (Breakfast, Lunch, Dinner) linked to a Member, Date, and HostelId.
+* **MembersMesses Table**: Manages the many-to-many relationship of users belonging to multiple messes, including joining/leaving logic and role assignments.
+* **DailyMeals Table**: Tracks meal participation (Breakfast, Lunch, Dinner) linked to a Member, Date, and MessId.
 * **BazarExpenses Table**: Records daily meal expenses (Item Name, Price, Date, Buyer Member).
 * **UtilityPayments Table**: Captures periodic utility payments associated with a specific utility type, amount, and payment date.
 
@@ -33,23 +33,23 @@ Built using **ASP.NET Core Identity** with JWT tokens.
 
 * **Roles**:
 * **Super Admin**: Full global privileges and system management.
-* **Meal Manager**: Scoped to specific hostels, managing daily meals and expenses.
+* **Meal Manager**: Scoped to specific messes, managing daily meals and expenses.
 * **Member**: General user, can generate invitation links requiring Admin/Manager approval to join.
 
 
-* **Access Control**: Strict data isolation ensuring members can only view data from hostels they are authorized to access.
+* **Access Control**: Strict data isolation ensuring members can only view data from messes they are authorized to access.
 
 ## Design Patterns & Logic
 
 * **CQRS (Command Query Responsibility Segregation)**: Implemented using MediatR to separate read and write operations.
 * **Validation**: FluentValidation applied to incoming requests.
-* **Caching**: Redis is utilized to cache frequently accessed data such as calculated meal rates and hostel details to reduce database queries.
+* **Caching**: Redis is utilized to cache frequently accessed data such as calculated meal rates and mess details to reduce database queries.
 
 ## Microsoft Orleans Implementation
 
 Orleans handles high-scale stateful actor management.
 
-* **Grains**: Virtual actors representing individual Members or Hostels.
+* **Grains**: Virtual actors representing individual Members or Messes.
 * **State Management**: Automatically manages persistent state and concurrency, allowing the system to process concurrent requests sequentially per grain without locking mechanisms.
 * **Scaling**: Distributed across a cluster of silos capable of handling millions of concurrent users.
 

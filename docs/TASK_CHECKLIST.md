@@ -15,24 +15,24 @@
 
 | Field | Value |
 |---|---|
-| **Current phase** | Phase 0 — Foundation & Scaffolding |
-| **Last completed** | Repo restructure: DB is backend-only (Neon = Postgres provider), Aspire chosen for local dev, duplicate npm installs removed — see `docs/log/2026-11-02-RESTRUCTURE-db-backend-only-aspire-neon.md` (supersedes the 2026-11-02 Neon frontend wiring) |
+| **Current phase** | Phase 1 — Identity, Auth & Multi-Tenancy Core |
+| **Last completed** | **Phase 0 complete** — all 7 tasks (P0-BE-1/2, P0-FE-1/2, P0-IN-1, P0-DX-1/2); logs in `docs/log/2026-11-02-P0-*.md` |
 | **In progress** | — |
-| **Next up (parallelizable)** | P0-BE-1, P0-FE-1 (clean scaffold exists; Shadcn UI + Prettier remain), P0-DX-1, P0-DX-2 |
+| **Next up (parallelizable)** | P1-BE-1 (Identity), P1-FE-1 waits on the P1-BE-2 contract; backend leads each phase slightly |
 | **Blocked** | — |
-| **Last updated** | 2026-11-02 by ZCode (restructure) |
+| **Last updated** | 2026-11-02 by ZCode (Phase 0) |
 
 ---
 
 ## Phase 0 — Foundation & Scaffolding
 
-- [ ] **P0-BE-1** Scaffold .NET 10 solution: `Api`, `OrleansHost`, `Application` (CQRS), `Infrastructure` (EF Core), test projects; `/health` endpoint — *no deps*
-- [ ] **P0-BE-2** ASP.NET **Aspire AppHost** (Redis + RabbitMQ container resources, Next.js dev-server resource) + **Neon Postgres** connection-string configuration (`DATABASE_URL` pooled for app, `DATABASE_URL_UNPOOLED` for EF migrations; no local Postgres container) — *depends: P0-BE-1*
-- [ ] **P0-FE-1** Scaffold Next.js App Router (TS strict) + Tailwind + Shadcn UI + ESLint/Prettier per `frontend/AGENTS.md` — *no deps*
-- [ ] **P0-FE-2** Core libs: `lib/api-client.ts` (Axios), `lib/query-client.ts`, `lib/auth.ts` skeleton, env config — *depends: P0-FE-1*
-- [ ] **P0-IN-1** GitHub Actions CI skeleton: backend build+test, frontend lint+build, on push to `main` — *depends: P0-BE-1, P0-FE-1*
-- [ ] **P0-DX-1** Write `docs/API_CONVENTIONS.md`: response envelope, `PaginatedResult<T>`, error codes, filtering/sorting/pagination query params — *no deps*
-- [ ] **P0-DX-2** Normalize legacy "Hostel/HostelId" wording in `docs/BACKEND_PROJECT_OVERVIEW.md` + backend section of `docs/SKILL_BUILDER.md` to Mess/MessId — *low priority, anytime*
+- [x] **P0-BE-1** Scaffold .NET 10 solution: `Api`, `OrleansHost`, `Application` (CQRS), `Infrastructure` (EF Core), test projects; `/health` endpoint — *no deps*
+- [x] **P0-BE-2** ASP.NET **Aspire AppHost** (Redis + RabbitMQ container resources, Next.js dev-server resource) + **Neon Postgres** connection-string configuration (`DATABASE_URL` pooled for app, `DATABASE_URL_UNPOOLED` for EF migrations; no local Postgres container) — *depends: P0-BE-1*
+- [x] **P0-FE-1** Scaffold Next.js App Router (TS strict) + Tailwind + Shadcn UI + ESLint/Prettier per `frontend/AGENTS.md` — *no deps*
+- [x] **P0-FE-2** Core libs: `lib/api-client.ts` (Axios), `lib/query-client.ts`, `lib/auth.ts` skeleton, env config — *depends: P0-FE-1*
+- [x] **P0-IN-1** GitHub Actions CI skeleton: backend build+test, frontend lint+build, on push to `main` — *depends: P0-BE-1, P0-FE-1*
+- [x] **P0-DX-1** Write `docs/API_CONVENTIONS.md`: response envelope, `PaginatedResult<T>`, error codes, filtering/sorting/pagination query params — *no deps*
+- [x] **P0-DX-2** Normalize legacy "Hostel/HostelId" wording in `docs/BACKEND_PROJECT_OVERVIEW.md` + backend section of `docs/SKILL_BUILDER.md` to Mess/MessId — *low priority, anytime*
 
 ## Phase 1 — Identity, Auth & Multi-Tenancy Core
 
@@ -107,6 +107,14 @@
 | 2026-11-02 | **Neon is used only as hosted Postgres.** `neon.ts` trimmed (no `auth`, no realtime preview config); `neon-auth`/`neon-realtime` skills removed from `.agents/skills/` | Identity = ASP.NET Core Identity + JWT (P1-BE-*); async UI updates arrive via the backend API. Neon Auth/Realtime services may be decommissioned in the Neon console |
 | 2026-11-02 | **Local dev orchestration = ASP.NET Aspire** AppHost (API, Orleans host, Next.js dev server, Redis/RabbitMQ containers); no docker-compose for app infra; Postgres stays on Neon (pooled `DATABASE_URL` / `DATABASE_URL_UNPOOLED` for EF migrations) | User decision 2026-11-02; P0-BE-2 rewritten from docker-compose to Aspire (now depends on P0-BE-1). Phase 4 observability stack (Prometheus/Grafana) may still use compose |
 | 2026-11-02 | **`frontend/` is the single npm root** — root `package.json`/`package-lock.json`/`node_modules/` removed, stray `frontend/frontend/` build dir deleted | Duplicate node_modules installs (root + frontend); `neon.ts` stays at repo root for the `neon` CLI, which needs no installed deps |
+| 2026-11-02 | Solution layout: `backend/MealManager.sln`, `src/{MealManager.Api, .Application (MediatR 14.2 + FluentValidation 12.2), .Infrastructure (EF Core 10 + Npgsql), .OrleansHost, .AppHost, .ServiceDefaults}`, `tests/{MealManager.UnitTests, .IntegrationTests}` (xUnit); namespaces `MealManager.*`; SDK pinned `backend/global.json` (10.0.403, rollForward latestFeature) | P0-BE-1; per checklist task + restructure log guidance |
+| 2026-11-02 | Orleans silo will be wired **in the API process** in Phase 3 (skill `bmm-orleans-grains`); `MealManager.OrleansHost` exists now as a worker placeholder for future dedicated silo hosts | P0-BE-1 |
+| 2026-11-02 | Health endpoints: explicit `/health` (liveness) + `/health/ready` (readiness) per skill `bmm-observability` — Aspire `MapDefaultEndpoints` (`/health`+`/alive`, dev-only) deliberately NOT used; readiness gains dependency checks in later phases | P0-BE-1 |
+| 2026-11-02 | Aspire 13.6.4 AppHost: `api` fixed at `http://localhost:5080`, `frontend` npm dev on :3000 via `PORT`; **Redis/RabbitMQ containers are skipped with a warning when Docker is unavailable** (dev machine has no Docker; GitHub CI runners do); Neon strings live in AppHost user-secrets: `messdb` (pooled `DATABASE_URL`) + `messdb-migrations` (unpooled) → injected into api as `ConnectionStrings__*` | P0-BE-2; setup commands in `backend/README.md` |
+| 2026-11-02 | Shadcn UI via new CLI: style `radix-nova` (Radix primitives + lucide, Geist fonts). Design tokens in `globals.css`: primary **indigo-600**, dark bg **slate-950**, semantics as CSS vars `--surplus/--arrear/--pending` (+muted) with `badge-surplus/badge-arrear/badge-pending` classes and `.num` = `font-mono tabular-nums`. Prettier (printWidth 100, tailwind plugin) is the formatter (`npm run format`) | P0-FE-1; tokens fixed per `docs/FRONTEND_DESIGN_OVERVIEW.md` §1 |
+| 2026-11-02 | Frontend core libs: Axios instance w/ Bearer + `X-Mess-Id` request interceptor (mess-id source installed by MessProvider in P1) and single-flight 401 refresh/replay skeleton; TanStack Query defaults (staleTime 30s, retry≤2 skip 4xx); access token in memory only | P0-FE-2; skills `bmm-app-router-multitenancy`, `bmm-server-state` |
+| 2026-11-02 | CI = one `.github/workflows/ci.yml`, two parallel jobs (backend setup-dotnet via `global.json` → restore/build/test; frontend setup-node via `frontend/.nvmrc` → npm ci/lint/build); no Docker/registry/deploy until Phase 5 | P0-IN-1; skill `bmm-cicd-github-actions` Phase-0 shape |
+| 2026-11-02 | API contract fixed in `docs/API_CONVENTIONS.md`: `ApiErrorResponse {type,title,status,detail,errors,traceId}`; error codes VALIDATION_ERROR/TENANT_REQUIRED/UNAUTHENTICATED/FORBIDDEN/NOT_FOUND/CONFLICT/RATE_LIMITED/INTERNAL_ERROR; `PaginatedResult<T> {items,page,pageSize,totalCount}`; `?page=&pageSize≤100&sortBy=<whitelist>&sortDir=asc|desc&from=&to=`; camelCase; dates `YYYY-MM-DD`; no versioning yet | P0-DX-1; binding for backend + frontend `types/api.ts` |
 
 ## Blockers / Open Questions
 

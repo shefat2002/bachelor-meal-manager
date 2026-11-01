@@ -22,13 +22,13 @@ Build interactive financial analytics using Recharts (daily bazar spend vs. meal
 # Agent Skill Definitions: Bachelor Meal Manager Backend
 
 ## 1. Orleans Actor Management
-Implement and configure Microsoft Orleans virtual actors (grains) for members and hostels. Manage grain lifecycles, state persistence, and sequential execution of concurrent stateful requests (e.g., meal rate and balance accumulation) without manual locking.
+Implement and configure Microsoft Orleans virtual actors (grains) for members and messes. Manage grain lifecycles, state persistence, and sequential execution of concurrent stateful requests (e.g., meal rate and balance accumulation) without manual locking.
 
 ## 2. CQRS and Endpoint Logic (MediatR)
 Design API endpoints following the Command Query Responsibility Segregation pattern using MediatR. Separate read (queries) and write (commands) operations, and integrate FluentValidation for request payload validation before handler execution.
 
 ## 3. Data Access and Multi-Tenant Scoping (PostgreSQL)
-Implement Entity Framework Core repositories for PostgreSQL. Ensure all database operations implement global query filters or scope data queries by `HostelId` to enforce strict multi-tenant data isolation.
+Implement Entity Framework Core repositories for PostgreSQL. Ensure all database operations implement global query filters or scope data queries by `MessId` to enforce strict multi-tenant data isolation.
 
 ## 4. Asynchronous Worker Setup (RabbitMQ)
 Configure RabbitMQ message brokers and background worker services. Enable decoupled, asynchronous processing for non-blocking tasks such as invitation notifications, email alerts, and automated monthly reporting.

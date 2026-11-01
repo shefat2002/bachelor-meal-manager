@@ -18,7 +18,7 @@ A multi-tenant SaaS platform ("Bachelor Meal Manager") for shared messes/hostels
 | `frontend/` | Next.js app. Agent rules: `frontend/AGENTS.md` |
 | `docs/` | All specifications. **Read before designing anything.** |
 | `docs/BACKEND_PROJECT_PLAN.md` | Canonical backend plan: schema, roles, API endpoints, business equations |
-| `docs/BACKEND_PROJECT_OVERVIEW.md` | Backend architecture summary (uses older "Hostel" wording — see §4) |
+| `docs/BACKEND_PROJECT_OVERVIEW.md` | Backend architecture summary |
 | `docs/FRONTEND_DESIGN_OVERVIEW.md` | UI/UX spec: design tokens, app shell, screen layouts |
 | `docs/PROJECT_PHASES.md` | High-level roadmap: all phases and their goals |
 | `docs/TASK_CHECKLIST.md` | **Single source of truth for current progress.** Update after every task |
@@ -41,7 +41,7 @@ This repo is developed by multiple AI agent sessions. To avoid re-explaining the
 
 ## 4. Canonical Decisions (binding for all agents)
 
-- **Tenant key is `MessId`** everywhere (DB columns, API routes, frontend routes, headers). Older docs (`docs/BACKEND_PROJECT_OVERVIEW.md`, backend sections of `docs/SKILL_BUILDER.md`) still say `HostelId`/`Hostels` — treat those as legacy wording for `MessId`/`Messes`. Do not introduce `HostelId` in new code.
+- **Tenant key is `MessId`** everywhere (DB columns, API routes, frontend routes, headers). Some docs historically used `HostelId`/`Hostels` — that wording was normalized to Mess/MessId on 2026-11-02 (P0-DX-2). Do not introduce `HostelId` in new code.
 - **Database = Neon-hosted PostgreSQL, connected from the backend only.** EF Core/Npgsql lives in the .NET backend; use the pooled connection string (`DATABASE_URL`) for the app and the direct/unpooled one (`DATABASE_URL_UNPOOLED`) for EF migrations (both in root `.env.local`). The frontend has **no database access** — never add a DB driver, migration, or credential under `frontend/`.
 - **Neon is used only for Postgres.** No Neon Auth / Realtime / Functions — identity is ASP.NET Core Identity + JWT (Phase 1), async UI updates arrive via the backend API.
 - **Local dev orchestration = ASP.NET Aspire.** The AppHost (in the backend solution) runs the API, Orleans host, the Next.js dev server, and Redis/RabbitMQ as container resources. There is no docker-compose for app infrastructure; only the Phase 4 observability stack (Prometheus/Grafana) may use compose.
