@@ -7,6 +7,14 @@ description: Data access and multi-tenant isolation for Bachelor Meal Manager �
 
 Specs: `docs/BACKEND_PROJECT_PLAN.md` §3, `backend/AGENTS.md`. **Tenant key is `MessId`** (root `AGENTS.md` §4 — older docs saying `HostelId` are legacy wording; never introduce it).
 
+## Database hosting — Neon (backend-only)
+
+PostgreSQL is hosted on **Neon** and the **backend is its only client** (the frontend never connects to the DB — root `AGENTS.md` §4). Connection strings come from the root `.env.local` (gitignored) via backend configuration:
+
+- **App runtime**: pooled connection string (`DATABASE_URL`, `-pooler` host) — Npgsql pooling through the Neon pooler (PgBouncer).
+- **EF Core migrations**: direct/unpooled string (`DATABASE_URL_UNPOOLED`) — `dotnet ef` needs a direct connection (DDL/commands PgBouncer rejects).
+- Local dev never runs a Postgres container; orchestration is ASP.NET Aspire (skill of P0-BE-2). Integration tests use TestContainers Postgres.
+
 ## Canonical entities
 
 | Entity | Key points |
@@ -46,7 +54,7 @@ Rules:
 
 ## Migrations & repositories
 
-- Npgsql provider; migrations in the Persistence project; `dotnet ef migrations add <Feature_Name>` — one migration per PR-sized change, reviewed like code.
+- Npgsql provider; migrations in the Persistence project; `dotnet ef migrations add <Feature_Name>` (against the Neon **unpooled** connection string) — one migration per PR-sized change, reviewed like code.
 - Repos wrap `DbContext` per aggregate; no direct `DbContext` in handlers beyond queries via dedicated read models when projection is needed (CQRS read side may use raw SQL/Dapper for report queries).
 
 ## Tenant-isolation testing (Definition of Done)

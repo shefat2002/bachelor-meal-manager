@@ -31,7 +31,7 @@ Log.Information("Bazar expense recorded {ExpenseId} for mess {MessId} amount {Am
 
 ## Grafana
 
-- Provisioned via docker-compose (config-as-code, `provisioning/dashboards` + datasources pointing at Prometheus) — no manually-clicked-only dashboards; JSON lives in the repo.
+- Provisioned via docker-compose (observability stack only — app services themselves are orchestrated by ASP.NET Aspire; Postgres lives on Neon) with config-as-code (`provisioning/dashboards` + datasources pointing at Prometheus) — no manually-clicked-only dashboards; JSON lives in the repo.
 - Core dashboard panels: request rate + p95 latency, error rate, per-endpoint meal/expense throughput, grain summary latency, RabbitMQ queue depth + failures, DB/Redis health.
 
 ## Diagnosing with the stack

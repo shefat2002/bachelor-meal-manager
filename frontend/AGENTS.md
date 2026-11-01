@@ -1,5 +1,11 @@
 # Frontend Architecture Document: Universal Meal Manager (Web)
 
+## 0. Hard Boundary — No Direct Database Access
+
+The frontend **never connects to the database (Neon Postgres) or any other infrastructure directly**. There is no `pg`, Neon Auth, Neon Realtime, or DB connection code in `frontend/`. All persistence, authentication, and live data flow through the **ASP.NET Core backend API** over HTTP (`lib/api-client.ts` + JWT Bearer + `X-Mess-Id` headers). Never add a DB driver, DB migration, or DB credential to this folder.
+
+---
+
 ## 1. Core Technology Stack
 * **Framework**: Next.js (App Router)
 * **Language**: TypeScript (Strict Mode)
@@ -120,3 +126,13 @@ Role resolution is evaluated on two tiers:
 * Built with a mobile-first philosophy using Tailwind CSS to accommodate users accessing the web dashboard from smartphones.
 * Touch-friendly controls for meal count sheets (stepper buttons, swipe gestures, collapsible expense lists).
 * Designed to ease the eventual transition to Native/Flutter/MAUI by matching API contracts and data models 1:1.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+## This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

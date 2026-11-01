@@ -33,7 +33,7 @@ Rules:
 
 - **Backend**: multi-stage — `sdk` stage restores/builds/tests, `runtime` stage copies publish output; non-root user; `EXPOSE 8080`; healthcheck hitting `/health`.
 - **Frontend**: multi-stage Node build → slim standalone `next start` (Next `output: 'standalone'`) image.
-- Compose file for local parity: same images developers build locally (postgres, redis, rabbitmq — see skills `bmm-efcore-multitenancy`, `bmm-rabbitmq-workers`, `bmm-observability`).
+- Local parity comes from the **Aspire AppHost** (P0-BE-2: redis, rabbitmq containers + frontend dev server; Postgres is Neon — connection strings only, never a local container). See skills `bmm-efcore-multitenancy`, `bmm-rabbitmq-workers`, `bmm-observability`.
 
 ## Conventions
 

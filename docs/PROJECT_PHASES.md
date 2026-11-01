@@ -14,7 +14,7 @@ The Universal Meal Manager System is a multi-tenant platform where many messes (
 
 ### Architecture in one paragraph
 
-An ASP.NET Core Web API fronted by CQRS (MediatR + FluentValidation) writes to PostgreSQL via EF Core with global tenant filters (`MessId`). Hot, sequential-per-entity state (running meal totals, balances) lives in Orleans grains persisted to Redis/PostgreSQL. RabbitMQ decouples slow side effects (emails, monthly report generation). Serilog + Prometheus + Grafana observe everything, GitHub Actions builds/tests/ship Docker images. The Next.js frontend consumes the API with TanStack Query, scopes every request to the active mess (`/dashboard/[messId]/*` + `X-Mess-Id` header), and renders financial data with strict numeric design rules.
+An ASP.NET Core Web API fronted by CQRS (MediatR + FluentValidation) writes to **Neon-hosted PostgreSQL** via EF Core with global tenant filters (`MessId`). Hot, sequential-per-entity state (running meal totals, balances) lives in Orleans grains persisted to Redis/PostgreSQL. RabbitMQ decouples slow side effects (emails, monthly report generation). Serilog + Prometheus + Grafana observe everything, GitHub Actions builds/tests/ship Docker images, and local development is orchestrated by **ASP.NET Aspire** (Redis/RabbitMQ containers + the Next.js dev server; Postgres stays on Neon). The Next.js frontend consumes the API with TanStack Query, scopes every request to the active mess (`/dashboard/[messId]/*` + `X-Mess-Id` header), and renders financial data with strict numeric design rules — it never touches the database directly.
 
 ### Parallel tracks
 
@@ -27,11 +27,11 @@ Backend (`BE-*`) and frontend (`FE-*`) tasks run as parallel tracks inside each 
 **Goal**: runnable skeletons + local infrastructure so all later work happens on stable ground.
 
 - .NET solution layout (Api, Orleans host, Application/Core, Persistence, Tests) and Next.js scaffold with strict TypeScript, Tailwind, Shadcn UI.
-- `docker-compose.yml` for PostgreSQL, Redis, RabbitMQ (+ Prometheus/Grafana later in Phase 4).
+- **ASP.NET Aspire AppHost** for local orchestration: Redis + RabbitMQ container resources, Next.js dev-server resource, Neon Postgres connection strings (no local Postgres). (+ Prometheus/Grafana later in Phase 4.)
 - CI skeleton on GitHub Actions (build + test on push to `main`).
 - Conventions land here: base response envelopes, pagination model, error contract, lint/format rules.
 
-**Exit criteria**: `docker compose up -d` + `dotnet run` + `npm run dev` all succeed; CI green on a trivial change.
+**Exit criteria**: `dotnet run --project src/MealManager.AppHost` (Aspire brings up API + frontend + Redis/RabbitMQ) + `npm run dev` all succeed; CI green on a trivial change.
 
 ## Phase 1 — Identity, Auth & Multi-Tenancy Core
 

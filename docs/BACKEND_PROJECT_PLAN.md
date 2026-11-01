@@ -9,9 +9,10 @@ The application utilizes a distributed, service-oriented architecture designed f
 ### 2.1 Technology Stack
 - **Backend Framework**: ASP.NET Core Web API (.NET 10, C# 14)
 - **State Management & Concurrency**: Microsoft Orleans (Virtual Actor Model)
-- **Primary Database**: PostgreSQL
+- **Primary Database**: PostgreSQL hosted on **Neon** (cloud Postgres; the backend is its only client — pooled `DATABASE_URL` for the app, direct `DATABASE_URL_UNPOOLED` for EF migrations)
 - **Distributed Cache & State Store**: Redis
 - **Message Broker**: RabbitMQ
+- **Local Dev Orchestration**: ASP.NET Aspire (AppHost runs Api, Orleans host, frontend dev server, Redis/RabbitMQ containers; no local Postgres)
 - **Containerization**: Docker
 - **CI/CD**: GitHub Actions
 - **Observability**: Serilog (Logging), Prometheus & Grafana (Monitoring)

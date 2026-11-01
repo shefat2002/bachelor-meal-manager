@@ -31,4 +31,4 @@ Specs: `backend/AGENTS.md` (Message Broker), `docs/BACKEND_PROJECT_PLAN.md` §7.
 
 ## Local dev
 
-RabbitMQ runs in docker-compose (Phase 0 task); management UI on :15672. Add an integration test with the TestContainers broker for publish→consume round-trip, and always log message IDs at INFO with payload at DEBUG (see skill `bmm-observability`).
+RabbitMQ runs as an **Aspire container resource** in the AppHost (P0-BE-2 task; management UI on :15672). Add an integration test with the TestContainers broker for publish→consume round-trip, and always log message IDs at INFO with payload at DEBUG (see skill `bmm-observability`).

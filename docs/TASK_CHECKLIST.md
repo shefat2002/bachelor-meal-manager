@@ -16,18 +16,18 @@
 | Field | Value |
 |---|---|
 | **Current phase** | Phase 0 — Foundation & Scaffolding |
-| **Last completed** | — (project initialized 2026-11-02) |
+| **Last completed** | Repo restructure: DB is backend-only (Neon = Postgres provider), Aspire chosen for local dev, duplicate npm installs removed — see `docs/log/2026-11-02-RESTRUCTURE-db-backend-only-aspire-neon.md` (supersedes the 2026-11-02 Neon frontend wiring) |
 | **In progress** | — |
-| **Next up (parallelizable)** | P0-BE-1, P0-FE-1, P0-IN-1 |
+| **Next up (parallelizable)** | P0-BE-1, P0-FE-1 (clean scaffold exists; Shadcn UI + Prettier remain), P0-DX-1, P0-DX-2 |
 | **Blocked** | — |
-| **Last updated** | 2026-11-02 by ZCode (initialization) |
+| **Last updated** | 2026-11-02 by ZCode (restructure) |
 
 ---
 
 ## Phase 0 — Foundation & Scaffolding
 
 - [ ] **P0-BE-1** Scaffold .NET 10 solution: `Api`, `OrleansHost`, `Application` (CQRS), `Infrastructure` (EF Core), test projects; `/health` endpoint — *no deps*
-- [ ] **P0-BE-2** `docker-compose.yml` (PostgreSQL, Redis, RabbitMQ) + connection-string configuration — *no deps*
+- [ ] **P0-BE-2** ASP.NET **Aspire AppHost** (Redis + RabbitMQ container resources, Next.js dev-server resource) + **Neon Postgres** connection-string configuration (`DATABASE_URL` pooled for app, `DATABASE_URL_UNPOOLED` for EF migrations; no local Postgres container) — *depends: P0-BE-1*
 - [ ] **P0-FE-1** Scaffold Next.js App Router (TS strict) + Tailwind + Shadcn UI + ESLint/Prettier per `frontend/AGENTS.md` — *no deps*
 - [ ] **P0-FE-2** Core libs: `lib/api-client.ts` (Axios), `lib/query-client.ts`, `lib/auth.ts` skeleton, env config — *depends: P0-FE-1*
 - [ ] **P0-IN-1** GitHub Actions CI skeleton: backend build+test, frontend lint+build, on push to `main` — *depends: P0-BE-1, P0-FE-1*
@@ -102,6 +102,11 @@
 | 2026-11-02 | Project skills live in `.agents/skills/` (12 skills, per `docs/SKILL_BUILDER.md`) | Skills encode build conventions so agents don't re-derive them |
 | 2026-11-02 | Progress protocol: tick task → update Status Snapshot → append Decisions Log → write `docs/log/` entry | Root `AGENTS.md` §3 |
 | 2026-11-02 | Production Postgres is hosted on **Neon** (`neon.tech`), not self-hosted/dockerized Postgres; Neon agent skills (`neon`, `neon-postgres`, `neon-postgres-branches`) installed in `.agents/skills/` from `neondatabase/agent-skills` | User decision 2026-11-02; EF Core `Npgsql` connection strings point at Neon (use pooled connection string). Local docker-compose Postgres may still be used for offline dev/tests, but Neon is the canonical DB. Neon Auth/Functions/Storage skills intentionally NOT installed — project has its own JWT auth, Orleans, RabbitMQ |
+| 2026-11-02 | Neon project `aged-dream-14739962`, branch `production`, db `neondb`, all three services (Postgres 18.6, Managed Better Auth, Realtime) deployed via `neon.ts` and wired into the Next.js frontend; env flows root `.env.local` → symlinked `frontend/.env.local` | User-provided org/project ids; details + verification commands in `docs/log/2026-11-02-NEON-SETUP-neon-services-wiring.md`. Frontend auth = Managed Better Auth (`@neon/auth`); .NET P1 identity tasks unaffected and may verify Neon JWTs via `NEON_AUTH_JWKS_URL` or keep ASP.NET Identity plan — decide in P1. **SUPERSEDED 2026-11-02 (restructure): frontend Neon wiring removed — see following rows** |
+| 2026-11-02 | **Database connectivity is backend-only.** All Neon Auth/Realtime/pg wiring removed from `frontend/` (db.ts, proxy.ts, api routes, probes demo, auth pages, `frontend/db/`, `.env.local` symlink). Frontend consumes the ASP.NET Core API exclusively | User decision 2026-11-02; canonical rule now in root `AGENTS.md` §4 + `frontend/AGENTS.md` §0. Supersedes the Neon-services-wiring entry above (its log file stays for history) |
+| 2026-11-02 | **Neon is used only as hosted Postgres.** `neon.ts` trimmed (no `auth`, no realtime preview config); `neon-auth`/`neon-realtime` skills removed from `.agents/skills/` | Identity = ASP.NET Core Identity + JWT (P1-BE-*); async UI updates arrive via the backend API. Neon Auth/Realtime services may be decommissioned in the Neon console |
+| 2026-11-02 | **Local dev orchestration = ASP.NET Aspire** AppHost (API, Orleans host, Next.js dev server, Redis/RabbitMQ containers); no docker-compose for app infra; Postgres stays on Neon (pooled `DATABASE_URL` / `DATABASE_URL_UNPOOLED` for EF migrations) | User decision 2026-11-02; P0-BE-2 rewritten from docker-compose to Aspire (now depends on P0-BE-1). Phase 4 observability stack (Prometheus/Grafana) may still use compose |
+| 2026-11-02 | **`frontend/` is the single npm root** — root `package.json`/`package-lock.json`/`node_modules/` removed, stray `frontend/frontend/` build dir deleted | Duplicate node_modules installs (root + frontend); `neon.ts` stays at repo root for the `neon` CLI, which needs no installed deps |
 
 ## Blockers / Open Questions
 

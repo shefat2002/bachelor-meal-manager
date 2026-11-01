@@ -7,9 +7,10 @@ This document outlines the high-level backend architecture for the Meal Manager 
 * **Framework**: ASP.NET Core Web API
 * **Language**: C#
 * **State Management & Concurrency**: Microsoft Orleans (Virtual Actor Model)
-* **Primary Database**: PostgreSQL
+* **Primary Database**: PostgreSQL hosted on **Neon** (backend-only access)
 * **Distributed Cache & State Store**: Redis
 * **Message Broker**: RabbitMQ
+* **Local Dev Orchestration**: ASP.NET Aspire (AppHost; no local Postgres — Neon connection strings)
 * **Containerization**: Docker
 * **CI/CD**: GitHub Actions
 * **Observability**: Serilog (Logging), Prometheus & Grafana (Monitoring)

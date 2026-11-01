@@ -6,8 +6,9 @@ This is the **entry point for every AI agent** working in this repository. Read 
 
 A multi-tenant SaaS platform ("Bachelor Meal Manager") for shared messes/hostels to manage daily meal participation, bazar (grocery) expenses, utility payments, deposits, and automated monthly financial settlement (meal rate, individual costs, surplus/arrear balances).
 
-- **Backend**: ASP.NET Core Web API (.NET 10, C# 14) + Microsoft Orleans (virtual actors) + PostgreSQL + Redis + RabbitMQ + Serilog/Prometheus/Grafana. See [backend/AGENTS.md](./backend/AGENTS.md).
-- **Frontend**: Next.js (App Router) + TypeScript strict + Tailwind CSS + Shadcn UI + TanStack Query + Zustand + React Hook Form/Zod + Recharts. See [frontend/AGENTS.md](./frontend/AGENTS.md).
+- **Backend**: ASP.NET Core Web API (.NET 10, C# 14) + Microsoft Orleans (virtual actors) + PostgreSQL **hosted on Neon** + Redis + RabbitMQ + Serilog/Prometheus/Grafana. See [backend/AGENTS.md](./backend/AGENTS.md).
+- **Frontend**: Next.js (App Router) + TypeScript strict + Tailwind CSS + Shadcn UI + TanStack Query + Zustand + React Hook Form/Zod + Recharts. Consumes the backend API over HTTP only — **no direct database access**. See [frontend/AGENTS.md](./frontend/AGENTS.md).
+- **Local development** is orchestrated with **ASP.NET Aspire** (AppHost runs the API, Orleans host, frontend dev server, and Redis/RabbitMQ containers); Postgres stays on Neon (connection strings only, no local Postgres container).
 
 ## 2. Repository Map
 
@@ -22,7 +23,8 @@ A multi-tenant SaaS platform ("Bachelor Meal Manager") for shared messes/hostels
 | `docs/PROJECT_PHASES.md` | High-level roadmap: all phases and their goals |
 | `docs/TASK_CHECKLIST.md` | **Single source of truth for current progress.** Update after every task |
 | `docs/log/` | One markdown log per completed unit of task (format: `docs/log/README.md`) |
-| `.agents/skills/` | 12 project skills (6 frontend, 6 backend) that encode how to build each concern. Use them |
+| `neon.ts` + `.env.local` (gitignored) | Neon project config (Postgres-only) + DB connection strings. Consumed by the **backend**; the frontend never reads them |
+| `.agents/skills/` | 12 project skills (6 frontend, 6 backend) + 3 Neon Postgres reference skills (`neon`, `neon-postgres`, `neon-postgres-branches`). Use them |
 
 ## 3. Multi-Agent Workflow Protocol (mandatory)
 
@@ -40,6 +42,10 @@ This repo is developed by multiple AI agent sessions. To avoid re-explaining the
 ## 4. Canonical Decisions (binding for all agents)
 
 - **Tenant key is `MessId`** everywhere (DB columns, API routes, frontend routes, headers). Older docs (`docs/BACKEND_PROJECT_OVERVIEW.md`, backend sections of `docs/SKILL_BUILDER.md`) still say `HostelId`/`Hostels` — treat those as legacy wording for `MessId`/`Messes`. Do not introduce `HostelId` in new code.
+- **Database = Neon-hosted PostgreSQL, connected from the backend only.** EF Core/Npgsql lives in the .NET backend; use the pooled connection string (`DATABASE_URL`) for the app and the direct/unpooled one (`DATABASE_URL_UNPOOLED`) for EF migrations (both in root `.env.local`). The frontend has **no database access** — never add a DB driver, migration, or credential under `frontend/`.
+- **Neon is used only for Postgres.** No Neon Auth / Realtime / Functions — identity is ASP.NET Core Identity + JWT (Phase 1), async UI updates arrive via the backend API.
+- **Local dev orchestration = ASP.NET Aspire.** The AppHost (in the backend solution) runs the API, Orleans host, the Next.js dev server, and Redis/RabbitMQ as container resources. There is no docker-compose for app infrastructure; only the Phase 4 observability stack (Prometheus/Grafana) may use compose.
+- **`frontend/` is the single npm root** — there is no root `package.json`; run all npm commands from `frontend/`.
 - **Tenant header**: frontend attaches `X-Mess-Id: <id>` to all tenant-scoped API calls.
 - **Roles**: `Super Admin` (global), `Meal Manager` (mess-scoped manager), `Member` (read-mostly; joins via invite requiring approval).
 - **Financial equations** (from `docs/BACKEND_PROJECT_PLAN.md` §5):
@@ -58,17 +64,17 @@ Backend (run from `backend/`):
 ```bash
 dotnet build
 dotnet test
-dotnet run --project src/MealManager.Api   # adjust to actual solution layout once scaffolded
+dotnet run --project src/MealManager.AppHost   # ASP.NET Aspire: API + Orleans + frontend dev server + Redis/RabbitMQ containers
 ```
 
-Frontend (run from `frontend/`):
+Frontend (run from `frontend/` — the single npm root; there is no root `package.json`):
 ```bash
 npm install
 npm run dev
 npm run lint && npm run build
 ```
 
-Local infrastructure (PostgreSQL, Redis, RabbitMQ, Prometheus, Grafana) is dockerized — use `docker compose up -d` once `docker-compose.yml` exists (Phase 0 task).
+PostgreSQL is **not** run locally — the backend connects to **Neon** (connection strings in root `.env.local`; `neon.ts` at the repo root is the Neon project config for the `neon` CLI).
 
 ## 6. Definition of Done (any task)
 

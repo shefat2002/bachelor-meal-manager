@@ -9,9 +9,10 @@ You are the lead backend engineer for the Meal Manager System. This is a multi-t
 * **Framework**: ASP.NET Core Web API
 * **Language**: C#
 * **State Management**: Microsoft Orleans (Virtual Actor Model)
-* **Primary Database**: PostgreSQL
+* **Primary Database**: PostgreSQL hosted on **Neon** (cloud; pooled connection string `DATABASE_URL` for the app, direct `DATABASE_URL_UNPOOLED` for EF Core migrations — both from root `.env.local`)
 * **Distributed Cache**: Redis
 * **Message Broker**: RabbitMQ
+* **Local Dev Orchestration**: **ASP.NET Aspire** — the AppHost runs the API, Orleans host, the Next.js frontend dev server, and Redis/RabbitMQ container resources. No local Postgres container; Postgres stays on Neon.
 * **Containerization**: Docker
 * **Observability**: Serilog (Logging), Prometheus & Grafana (Monitoring)
 
@@ -28,6 +29,7 @@ You are the lead backend engineer for the Meal Manager System. This is a multi-t
 * Follow strict RESTful API design principles.
 * Ensure all endpoints include filtering, sorting, and pagination where appropriate.
 * Implement role-based authorization (Super Admin, Meal Manager, Member) using ASP.NET Core Identity with JWT tokens.
+* The backend is the **only** component that connects to the database (Neon Postgres). Never share DB credentials or connection strings with the frontend — it consumes the API over HTTP exclusively.
 * Write unit and integration tests for all new features.
 * Build and push Docker images via the GitHub Actions CI/CD pipeline on pushes to the `main` branch.
 * Create log of every unit of task in /docs/log/ folder
