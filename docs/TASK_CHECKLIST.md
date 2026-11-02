@@ -16,11 +16,11 @@
 | Field | Value |
 |---|---|
 | **Current phase** | Phase 2 — Core Domain: Meals, Bazar & Utilities |
-| **Last completed** | **Phase 1 complete** — all 10 tasks (P1-BE-1…5, P1-FE-1…5); migration applied to Neon; tests green (10 unit + 12 sqlite e2e + PG isolation suite in CI); logs in `docs/log/2026-11-02-P1-*.md` |
+| **Last completed** | **P2-BE-1…5** — all Phase 2 backend tasks: DailyMeals/BazarExpenses/UtilityTypes/UtilityPayments/Deposit entities + endpoints; migration `Phase2_Meals_Bazar_Utilities_Deposits` applied to Neon; tests green (24 unit + 30 sqlite e2e + PG isolation suite in CI); contracts frozen in `docs/API_CONVENTIONS.md`; logs in `docs/log/2026-11-02-P2-BE-*.md` |
 | **In progress** | — |
-| **Next up (parallelizable)** | P2-BE-1/2 (meals + bazar endpoints) lead; P2-FE-* follow on contracts |
+| **Next up (parallelizable)** | P2-FE-1/2 (meal sheet on /api/meals) and P2-FE-3/4 (expenses hub on /api/expenses/* + /api/deposits) are unblocked; P2-FE-5 (members polish) anytime |
 | **Blocked** | — |
-| **Last updated** | 2026-11-02 by ZCode (Phase 1) |
+| **Last updated** | 2026-11-02 by ZCode (Phase 2 backend) |
 
 ---
 
@@ -49,11 +49,11 @@
 
 ## Phase 2 — Core Domain: Meals, Bazar & Utilities
 
-- [ ] **P2-BE-1** DailyMeals: `POST/GET /api/meals` (per member/date B/L/D counts, filtering+sorting+pagination) — *depends: P1-BE-5*
-- [ ] **P2-BE-2** BazarExpenses: `POST/GET /api/expenses/bazar` (items, price, date, buyer) — *depends: P1-BE-5*
-- [ ] **P2-BE-3** UtilityTypes: manager-scoped CRUD per mess (Electricity, Wi-Fi, Cook Salary…) — *depends: P1-BE-5*
-- [ ] **P2-BE-4** UtilityPayments: `POST/GET /api/expenses/utility` linked to UtilityTypes — *depends: P2-BE-3*
-- [ ] **P2-BE-5** Member deposits ledger + manager approval endpoints — *depends: P1-BE-5*
+- [x] **P2-BE-1** DailyMeals: `POST/GET /api/meals` (per member/date B/L/D counts, filtering+sorting+pagination) — *depends: P1-BE-5*
+- [x] **P2-BE-2** BazarExpenses: `POST/GET /api/expenses/bazar` (items, price, date, buyer) — *depends: P1-BE-5*
+- [x] **P2-BE-3** UtilityTypes: manager-scoped CRUD per mess (Electricity, Wi-Fi, Cook Salary…) — *depends: P1-BE-5*
+- [x] **P2-BE-4** UtilityPayments: `POST/GET /api/expenses/utility` linked to UtilityTypes — *depends: P2-BE-3*
+- [x] **P2-BE-5** Member deposits ledger + manager approval endpoints — *depends: P1-BE-5*
 - [ ] **P2-FE-1** Meal sheet — daily entry view (member rows, `- 0 0.5 1 2 +` steppers, guest meals, optimistic updates) — *depends: P2-BE-1, P1-FE-3*
 - [ ] **P2-FE-2** Meal sheet — monthly matrix grid (sticky name col, day columns, monthly totals) — *depends: P2-FE-1*
 - [ ] **P2-FE-3** Expenses hub — bazar tab: filterable table + `+ Add Bazar` drawer with dynamic rows & auto-sum — *depends: P2-BE-2*
@@ -123,6 +123,11 @@
 | 2026-11-02 | **Test strategy**: sqlite-in-memory `WebApplicationFactory` e2e suite (runs everywhere; EF10 needs `IDbContextOptionsConfiguration<T>` removal, and each cookie-carrying stage needs a FRESH HttpClient — the test client caches cookies per instance) + TestContainers Postgres isolation suite as `[SkippableFact]` (runs in CI where Docker exists, skips locally). OTP dev code returned in JSON only in Development (SMS arrives Phase 4) | P1-BE-5; live e2e against Neon also verified via curl |
 | 2026-11-02 | **App shell lives at `(dashboard)/dashboard/[messId]/layout.tsx`** (deviation from the skill's `(dashboard)/layout.tsx` — the shell's nav/switcher need the active mess, which only exists under `[messId]`). Next 16 cacheComponents: `params`/`useParams` reads must sit inside `<Suspense>`; `/dashboard` is the mess selector page | P1-FE-3; MessProvider validates GUID, renders no-access screen, installs the api-client mess-id source, drops old mess caches on switch |
 | 2026-11-02 | Health split: `/health` = live-tag checks only (liveness); `/health/ready` = all incl. real Npgsql ping to Neon (converted string). Middleware (Edge) protects `/dashboard/*` + `/invite/*` via the `bmm_refresh` cookie → `/login?next=` | P1-BE-2 + P1-FE-4 |
+| 2026-11-02 | **Guest meals fold into the B/L/D counts** (no separate guest column): `DailyMeal` carries only Breakfast/Lunch/Dinner `decimal(4,1)` (0–10, 0.5 steps); a host marks e.g. 2.0 lunch when a guest joins. `totalUnits = B+L+D` in the DTO | User decision 2026-11-02 (P2 planning); `API_CONVENTIONS.md` §5 wording "guests included" honored literally |
+| 2026-11-02 | **`POST /api/meals` is a bulk upsert returning 200** (not 201): one date + N member entries, re-submit overwrites via unique index `(MessId, MemberId, Date)`. Members may submit only their own memberId (403 otherwise); managers anyone (targets must be active members → else 404) | P2-BE-1; batch + overwrite semantics make Location/201 meaningless |
+| 2026-11-02 | **Bazar line shape: `Quantity` (9,2, default 1) + `Price` (18,2, unit price); line total = Quantity × Price computed in DTO** (never stored). POST accepts 1–50 items sharing date+buyer → one row per item. Bazar/utility/utility-type/deposit-approval writes are manager-only; members read | P2-BE-2; supports the P2-FE-3 drawer (name/qty/price rows, auto-sum) |
+| 2026-11-02 | **UtilityTypes routes: `POST/GET /api/utility-types`, `PUT/DELETE /api/utility-types/{id}`** — unique `(MessId, Name)` (case-insensitive check → 409), `IsActive` soft-disable; DELETE → 409 when payments reference the type | P2-BE-3/4; routes were undefined in BACKEND_PROJECT_PLAN §6 (only payments endpoints existed) |
+| 2026-11-02 | **Deposits routes: `POST/GET /api/deposits`, `PUT /api/deposits/{id}/approve \| reject`** — member-created deposits start `Pending`; **manager-created deposits auto-approve** (ApprovedBy = creator). Only Pending → approve/reject; any other transition → 409. Rejection leaves ApprovedBy/ApprovedAt null | User decision 2026-11-02 (P2 planning); routes were undefined in the plan |
 
 ## Blockers / Open Questions
 

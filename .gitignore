@@ -53,6 +53,8 @@ bld/
 [Oo]ut/
 [Ll]og/
 [Ll]ogs/
+# docs/log/ holds the task logs required by AGENTS.md §3 — keep it tracked
+!docs/log/
 
 # Build results on 'Bin' directories
 **/[Bb]in/*
