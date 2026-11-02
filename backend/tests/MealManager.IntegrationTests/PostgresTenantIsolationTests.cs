@@ -75,7 +75,11 @@ public sealed class PostgresTenantIsolationTests : IAsyncLifetime
         var messB = await CreateMessAsync(bob, "Mess B");
 
         // Bob also joins Mess A, so the members table holds rows for both tenants
-        var inviteA = await alice.PostAsJsonAsync("/api/members/invite", new { });
+        var inviteA = await alice.SendAsync(new HttpRequestMessage(HttpMethod.Post, "/api/members/invite")
+        {
+            Headers = { { "X-Mess-Id", messA } },
+        });
+        inviteA.EnsureSuccessStatusCode();
         var tokenA = (await inviteA.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("inviteToken").GetString()!;
         await bob.PostAsJsonAsync("/api/members/join", new { inviteToken = tokenA });
 
