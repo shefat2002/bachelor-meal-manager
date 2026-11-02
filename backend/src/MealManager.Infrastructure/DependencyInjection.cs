@@ -60,9 +60,10 @@ public static class DependencyInjection
 
         var uri = new Uri(connectionString);
         var userInfo = uri.UserInfo.Split(':', 2);
+        var port = uri.Port <= 0 ? 5432 : uri.Port; // Uri.Port is -1 when the URL uses the default port
         var builder = new StringBuilder()
             .Append("Host=").Append(uri.Host)
-            .Append(";Port=").Append(uri.Port)
+            .Append(";Port=").Append(port)
             .Append(";Username=").Append(Uri.UnescapeDataString(userInfo[0]));
         if (userInfo.Length == 2)
         {

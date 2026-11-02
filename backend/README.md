@@ -43,6 +43,26 @@ dotnet user-secrets set "ConnectionStrings:messdb" "$POOLED" --project src/MealM
 dotnet user-secrets set "ConnectionStrings:messdb-migrations" "$UNPOOLED" --project src/MealManager.AppHost
 ```
 
+The **Api** project also needs its own secrets for standalone runs and EF tooling:
+
+```bash
+dotnet user-secrets set "Jwt:Key" "$(openssl rand -hex 64)" --project src/MealManager.Api
+dotnet user-secrets set "ConnectionStrings:messdb" "$POOLED" --project src/MealManager.Api
+```
+
+### Applying migrations to Neon
+
+`dotnet ef database update --connection` mangles `=` in connection strings, and Npgsql
+needs keyword format — so apply migrations by temporarily swapping the Api's `messdb`
+secret to the converted **unpooled** URL:
+
+```bash
+UNPOOLED_CLEAN='Host=<host>;Port=5432;Username=<user>;Password=<pass>;Database=neondb;SSL Mode=Require'
+dotnet user-secrets set "ConnectionStrings:messdb" "$UNPOOLED_CLEAN" --project src/MealManager.Api
+dotnet ef database update --project src/MealManager.Infrastructure --startup-project src/MealManager.Api
+dotnet user-secrets set "ConnectionStrings:messdb" "$POOLED" --project src/MealManager.Api   # restore
+```
+
 - `messdb` — **pooled** connection (app runtime; Npgsql through the Neon pooler)
 - `messdb-migrations` — **direct/unpooled** (for `dotnet ef` migrations; DDL does not work over transaction pooling)
 

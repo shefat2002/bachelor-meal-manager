@@ -2,7 +2,6 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using FluentAssertions;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace MealManager.IntegrationTests;
 
@@ -34,8 +33,11 @@ public sealed class MessMemberFlowTests(BmmApiFactory factory) : IClassFixture<B
         var bobSees = await bob.GetAsync($"/api/messes/{messId}");
         bobSees.StatusCode.Should().Be(HttpStatusCode.NotFound);
 
-        // Alice (manager) creates an invite; Bob joins → pending
-        var invite = await alice.PostAsJsonAsync("/api/members/invite", new { });
+        // Invite is tenant-scoped: manager sends X-Mess-Id; Bob joins → pending
+        var invite = await alice.SendAsync(new HttpRequestMessage(HttpMethod.Post, "/api/members/invite")
+        {
+            Headers = { { "X-Mess-Id", messId } },
+        });
         invite.EnsureSuccessStatusCode();
         var inviteToken = (await invite.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("inviteToken").GetString()!;
 
@@ -55,7 +57,7 @@ public sealed class MessMemberFlowTests(BmmApiFactory factory) : IClassFixture<B
         var bobForbiddenResponse = await bob.SendAsync(NewMemberListRequest(bob, messId));
         bobForbiddenResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
 
-        // Alice sees the pending member and approves
+        // Alice (manager, via X-Mess-Id) sees the pending member and approves
         var pending = await alice.SendAsync(NewMemberListRequest(alice, messId));
         pending.EnsureSuccessStatusCode();
         var pendingBody = await pending.Content.ReadFromJsonAsync<JsonElement>();
@@ -66,10 +68,13 @@ public sealed class MessMemberFlowTests(BmmApiFactory factory) : IClassFixture<B
             .Single(m => m.GetProperty("name").GetString() == "Bob")
             .GetProperty("status").GetString().Should().Be("Pending");
 
-        var approve = await alice.PutAsync($"/api/members/{bobMemberId}/approve", null);
+        var approve = await alice.SendAsync(new HttpRequestMessage(HttpMethod.Put, $"/api/members/{bobMemberId}/approve")
+        {
+            Headers = { { "X-Mess-Id", messId } },
+        });
         approve.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        // Bob is now an active member: members list works via X-Mess-Id, sees only active members (no pending entries)
+        // Bob is now an active member: members list works via X-Mess-Id, sees only active members
         var bobList = await bob.SendAsync(NewMemberListRequest(bob, messId));
         bobList.EnsureSuccessStatusCode();
         var bobListBody = await bobList.Content.ReadFromJsonAsync<JsonElement>();
@@ -84,13 +89,22 @@ public sealed class MessMemberFlowTests(BmmApiFactory factory) : IClassFixture<B
         bobInvite.StatusCode.Should().Be(HttpStatusCode.Forbidden);
 
         // Alice promotes Bob; with two managers, demoting herself is allowed
-        var promote = await alice.PutAsJsonAsync($"/api/members/{bobMemberId}/role", new { role = "MealManager" });
+        var promote = await alice.SendAsync(new HttpRequestMessage(HttpMethod.Put, $"/api/members/{bobMemberId}/role")
+        {
+            Content = JsonContent.Create(new { role = "MealManager" }),
+            Headers = { { "X-Mess-Id", messId } },
+        });
         promote.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
         var aliceMemberId = pendingBody.GetProperty("items").EnumerateArray()
             .Single(m => m.GetProperty("name").GetString() == "Alice")
             .GetProperty("memberId").GetString()!;
-        var demote = await alice.PutAsJsonAsync($"/api/members/{aliceMemberId}/role", new { role = "Member" });
-        demote.StatusCode.Should().Be(HttpStatusCode.OK);
+        var demote = await alice.SendAsync(new HttpRequestMessage(HttpMethod.Put, $"/api/members/{aliceMemberId}/role")
+        {
+            Content = JsonContent.Create(new { role = "Member" }),
+            Headers = { { "X-Mess-Id", messId } },
+        });
+        demote.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         // Alice deletes her mess (creator)
         var delete = await alice.DeleteAsync($"/api/messes/{messId}");
@@ -110,7 +124,10 @@ public sealed class MessMemberFlowTests(BmmApiFactory factory) : IClassFixture<B
         var create = await alice.PostAsJsonAsync("/api/messes", new { name = "Private Mess" });
         var messId = (await create.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetString()!;
 
-        var response = await mallory.SendAsync(NewMemberListRequest(mallory, messId));
+        var response = await mallory.SendAsync(new HttpRequestMessage(HttpMethod.Get, "/api/members")
+        {
+            Headers = { { "X-Mess-Id", messId } },
+        });
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
         (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("type").GetString().Should().Be("FORBIDDEN");

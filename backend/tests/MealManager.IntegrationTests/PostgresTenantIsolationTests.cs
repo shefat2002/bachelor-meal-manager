@@ -20,22 +20,27 @@ namespace MealManager.IntegrationTests;
 /// </summary>
 public sealed class PostgresTenantIsolationTests : IAsyncLifetime
 {
-    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:18-alpine")
-        .Build();
+    private PostgreSqlContainer? _postgres;
 
     [SkippableFact]
     public async Task Members_Of_MessA_Never_Return_MessB_Rows()
     {
         Skip.IfNot(DockerAvailable(), "Docker is not available — Postgres isolation suite skipped (runs in CI).");
 
+        PostgreSqlContainer postgres;
         try
         {
-            await _postgres.StartAsync();
+            // Testcontainers 4.x resolves the Docker endpoint at Build() time — construct inside the try.
+            postgres = new PostgreSqlBuilder("postgres:18-alpine").Build();
+            await postgres.StartAsync();
         }
         catch (Exception ex) when (ex is DockerUnavailableException || ex.ToString().Contains("DockerUnavailableException"))
         {
             Skip.If(true, "Docker daemon unreachable — Postgres isolation suite skipped (runs in CI).");
+            return;
         }
+
+        _postgres = postgres;
         var connectionString = _postgres.GetConnectionString();
         var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
@@ -124,5 +129,5 @@ public sealed class PostgresTenantIsolationTests : IAsyncLifetime
 
     public Task InitializeAsync() => Task.CompletedTask;
 
-    public Task DisposeAsync() => _postgres.DisposeAsync().AsTask();
+    public Task DisposeAsync() => _postgres?.DisposeAsync().AsTask() ?? Task.CompletedTask;
 }

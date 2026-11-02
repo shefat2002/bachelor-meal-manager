@@ -18,17 +18,19 @@ builder.Services.AddHealthChecks()
     .AddCheck<PostgresHealthCheck>("postgres", tags: ["ready"]);
 
 // JWT auth — key lives in user-secrets (dev) / env (prod); never in appsettings.
-var jwtSection = builder.Configuration.GetSection("Jwt");
-var jwtKey = jwtSection["Key"] ?? throw new InvalidOperationException("Jwt:Key is not configured.");
+// Read config inside the options lambda (resolved lazily on first use) so test-host config
+// overrides are honored by BOTH the validator and TokenService.
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
+        var jwt = builder.Configuration.GetSection("Jwt");
         options.TokenValidationParameters = new TokenValidationParameters
         {
-            ValidIssuer = jwtSection["Issuer"] ?? "bmm-api",
-            ValidAudience = jwtSection["Audience"] ?? "bmm-web",
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+            ValidIssuer = jwt["Issuer"] ?? "bmm-api",
+            ValidAudience = jwt["Audience"] ?? "bmm-web",
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(
+                jwt["Key"] ?? throw new InvalidOperationException("Jwt:Key is not configured."))),
             ClockSkew = TimeSpan.FromSeconds(30),
         };
     });

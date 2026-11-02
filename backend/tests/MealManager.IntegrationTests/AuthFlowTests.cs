@@ -27,8 +27,9 @@ public sealed class AuthFlowTests(BmmApiFactory factory) : IClassFixture<BmmApiF
 
         client.DefaultRequestHeaders.Authorization = null;
 
-        // Refresh rotates: new access token + new cookie (HttpClient has no cookie jar — pass explicitly)
-        var refresh = await client.SendAsync(new HttpRequestMessage(HttpMethod.Post, "/api/auth/refresh")
+        // Refresh rotates: new access token + new cookie. Fresh clients per stage — the test
+        // HttpClient caches cookies per instance (TestServer quirk), which would mask rotation.
+        var refresh = await factory.CreateClient().SendAsync(new HttpRequestMessage(HttpMethod.Post, "/api/auth/refresh")
         {
             Headers = { { "Cookie", cookie1 } },
         });
@@ -38,19 +39,19 @@ public sealed class AuthFlowTests(BmmApiFactory factory) : IClassFixture<BmmApiF
         var cookie2 = BmmApiFactoryExtensions.ExtractRefreshCookie(refresh);
 
         // Replaying the rotated-away cookie triggers reuse detection → 401
-        var replay = await client.SendAsync(new HttpRequestMessage(HttpMethod.Post, "/api/auth/refresh")
+        var replay = await factory.CreateClient().SendAsync(new HttpRequestMessage(HttpMethod.Post, "/api/auth/refresh")
         {
             Headers = { { "Cookie", cookie1 } },
         });
         replay.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
 
         // Logout revokes the current refresh token
-        var logout = await client.SendAsync(new HttpRequestMessage(HttpMethod.Post, "/api/auth/logout")
+        var logout = await factory.CreateClient().SendAsync(new HttpRequestMessage(HttpMethod.Post, "/api/auth/logout")
         {
             Headers = { { "Cookie", cookie2 } },
         });
         logout.StatusCode.Should().Be(HttpStatusCode.NoContent);
-        var afterLogout = await client.SendAsync(new HttpRequestMessage(HttpMethod.Post, "/api/auth/refresh")
+        var afterLogout = await factory.CreateClient().SendAsync(new HttpRequestMessage(HttpMethod.Post, "/api/auth/refresh")
         {
             Headers = { { "Cookie", cookie2 } },
         });
