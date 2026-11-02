@@ -117,3 +117,38 @@ export interface Deposit {
   note: string | null;
   createdAt: string;
 }
+
+// ---- Phase 3 summary contracts (mirror docs/API_CONVENTIONS.md §6 / MessSummaryDto) ----
+
+export interface MemberSettlementRow {
+  memberId: string;
+  name: string;
+  mealUnits: number;
+  mealCost: number;
+  utilityShare: number;
+  totalCost: number;
+  deposited: number;
+  balance: number;
+}
+
+export interface DailyTrend {
+  date: string; // YYYY-MM-DD
+  bazarSpend: number;
+  mealUnits: number;
+}
+
+export interface MessSummary {
+  messId: string;
+  year: number;
+  month: number;
+  locked: boolean;
+  mealRate: number;
+  totalMealUnits: number;
+  totalMealCosts: number;
+  totalUtilityCosts: number;
+  totalExpenditure: number;
+  totalDeposits: number;
+  onHandBalance: number;
+  members: MemberSettlementRow[];
+  daily: DailyTrend[];
+}
