@@ -1,4 +1,5 @@
 using MealManager.Application.Abstractions;
+using MealManager.Application.Common;
 using MealManager.Application.Domain;
 using MealManager.Application.Exceptions;
 using MediatR;
@@ -10,22 +11,22 @@ public record ApproveDepositCommand(Guid Id) : ITenantRequest, IRequest<Unit>;
 
 public record RejectDepositCommand(Guid Id) : ITenantRequest, IRequest<Unit>;
 
-public sealed class ApproveDepositCommandHandler(IApplicationContext db, ITenantContext tenant, ICurrentUser currentUser)
+public sealed class ApproveDepositCommandHandler(IApplicationContext db, ITenantContext tenant, ICurrentUser currentUser, ITotalsProjection projection)
     : IRequestHandler<ApproveDepositCommand, Unit>
 {
     public async Task<Unit> Handle(ApproveDepositCommand request, CancellationToken cancellationToken)
     {
-        await DepositReview.SetStatusAsync(db, tenant, currentUser, request.Id, DepositStatus.Approved, "approve", cancellationToken);
+        await DepositReview.SetStatusAsync(db, tenant, currentUser, projection, request.Id, DepositStatus.Approved, "approve", cancellationToken);
         return Unit.Value;
     }
 }
 
-public sealed class RejectDepositCommandHandler(IApplicationContext db, ITenantContext tenant, ICurrentUser currentUser)
+public sealed class RejectDepositCommandHandler(IApplicationContext db, ITenantContext tenant, ICurrentUser currentUser, ITotalsProjection projection)
     : IRequestHandler<RejectDepositCommand, Unit>
 {
     public async Task<Unit> Handle(RejectDepositCommand request, CancellationToken cancellationToken)
     {
-        await DepositReview.SetStatusAsync(db, tenant, currentUser, request.Id, DepositStatus.Rejected, "reject", cancellationToken);
+        await DepositReview.SetStatusAsync(db, tenant, currentUser, projection, request.Id, DepositStatus.Rejected, "reject", cancellationToken);
         return Unit.Value;
     }
 }
@@ -36,6 +37,7 @@ internal static class DepositReview
         IApplicationContext db,
         ITenantContext tenant,
         ICurrentUser currentUser,
+        ITotalsProjection projection,
         Guid depositId,
         DepositStatus target,
         string action,
@@ -52,6 +54,12 @@ internal static class DepositReview
             throw new ConflictException($"Only pending deposits can be {action}d.");
         }
 
+        // Approving moves money INTO the month's collected total — a frozen month stays frozen.
+        if (target == DepositStatus.Approved)
+        {
+            await MonthLockGuard.RequireOpenAsync(db, tenant.MessId!.Value, deposit.Date, ct);
+        }
+
         deposit.Status = target;
         if (target == DepositStatus.Approved)
         {
@@ -60,5 +68,10 @@ internal static class DepositReview
         }
 
         await db.SaveChangesAsync(ct);
+
+        if (target == DepositStatus.Approved)
+        {
+            await projection.DepositApprovedAsync(tenant.MessId!.Value, deposit.Date, deposit.Amount, ct);
+        }
     }
 }

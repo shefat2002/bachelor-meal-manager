@@ -1,5 +1,6 @@
 using FluentValidation;
 using MealManager.Application.Abstractions;
+using MealManager.Application.Common;
 using MealManager.Application.Domain;
 using MealManager.Application.Exceptions;
 using MediatR;
@@ -24,7 +25,11 @@ public sealed class CreateDepositCommandValidator : AbstractValidator<CreateDepo
     }
 }
 
-public sealed class CreateDepositCommandHandler(IApplicationContext db, ITenantContext tenant, ICurrentUser currentUser)
+public sealed class CreateDepositCommandHandler(
+    IApplicationContext db,
+    ITenantContext tenant,
+    ICurrentUser currentUser,
+    ITotalsProjection projection)
     : IRequestHandler<CreateDepositCommand, DepositDto>
 {
     public async Task<DepositDto> Handle(CreateDepositCommand request, CancellationToken cancellationToken)
@@ -33,6 +38,8 @@ public sealed class CreateDepositCommandHandler(IApplicationContext db, ITenantC
         var userId = currentUser.UserId!.Value;
         var isManager = tenant.Role == MessRole.MealManager;
         var memberId = request.MemberId ?? userId;
+
+        await MonthLockGuard.RequireOpenAsync(db, messId, request.Date, cancellationToken);
 
         if (!isManager && memberId != userId)
         {
@@ -70,6 +77,12 @@ public sealed class CreateDepositCommandHandler(IApplicationContext db, ITenantC
 
         db.Deposits.Add(deposit);
         await db.SaveChangesAsync(cancellationToken);
+
+        // Only approved money moves the totals (pending deposits contribute nothing).
+        if (isManager)
+        {
+            await projection.DepositApprovedAsync(messId, request.Date, request.Amount, cancellationToken);
+        }
 
         var memberName = await db.Members.AsNoTracking()
             .Where(u => u.Id == memberId)

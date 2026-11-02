@@ -26,6 +26,8 @@ public class ApplicationContext(
 
     public DbSet<Deposit> Deposits => Set<Deposit>();
 
+    public DbSet<MonthLock> MonthLocks => Set<MonthLock>();
+
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
     public DbSet<OtpCode> OtpCodes => Set<OtpCode>();
@@ -146,6 +148,14 @@ public class ApplicationContext(
             e.HasQueryFilter(d => d.MessId == tenant.MessId);
             e.HasOne<Mess>().WithMany().HasForeignKey(d => d.MessId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne<Member>().WithMany().HasForeignKey(d => d.MemberId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<MonthLock>(e =>
+        {
+            // One row per (mess, month) — its existence IS the lock; the snapshot is served while it exists.
+            e.HasIndex(l => new { l.MessId, l.Year, l.Month }).IsUnique();
+            e.HasQueryFilter(l => l.MessId == tenant.MessId);
+            e.HasOne<Mess>().WithMany().HasForeignKey(l => l.MessId).OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

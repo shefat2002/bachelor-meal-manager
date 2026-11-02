@@ -1,5 +1,6 @@
 using FluentValidation;
 using MealManager.Application.Abstractions;
+using MealManager.Application.Common;
 using MealManager.Application.Domain;
 using MealManager.Application.Exceptions;
 using MediatR;
@@ -22,12 +23,17 @@ public sealed class CreateUtilityPaymentCommandValidator : AbstractValidator<Cre
     }
 }
 
-public sealed class CreateUtilityPaymentCommandHandler(IApplicationContext db, ITenantContext tenant, ICurrentUser currentUser)
+public sealed class CreateUtilityPaymentCommandHandler(
+    IApplicationContext db,
+    ITenantContext tenant,
+    ICurrentUser currentUser,
+    ITotalsProjection projection)
     : IRequestHandler<CreateUtilityPaymentCommand, UtilityPaymentDto>
 {
     public async Task<UtilityPaymentDto> Handle(CreateUtilityPaymentCommand request, CancellationToken cancellationToken)
     {
         TenantGuards.RequireManager(tenant, "record utility payments");
+        await MonthLockGuard.RequireOpenAsync(db, tenant.MessId!.Value, request.PaymentDate, cancellationToken);
 
         // Type must belong to the active mess — cross-mess type ids resolve to 404 (no leakage).
         var type = await db.UtilityTypes.AsNoTracking().IgnoreQueryFilters()
@@ -47,6 +53,8 @@ public sealed class CreateUtilityPaymentCommandHandler(IApplicationContext db, I
         };
         db.UtilityPayments.Add(payment);
         await db.SaveChangesAsync(cancellationToken);
+
+        await projection.UtilityPaymentAddedAsync(tenant.MessId!.Value, request.PaymentDate, request.Amount, cancellationToken);
 
         return new UtilityPaymentDto(payment.Id, payment.UtilityTypeId, type.Name, payment.Amount,
             payment.PaymentDate, payment.Note, payment.CreatedBy, payment.CreatedAt);
