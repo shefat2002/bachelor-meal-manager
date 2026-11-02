@@ -15,12 +15,12 @@
 
 | Field | Value |
 |---|---|
-| **Current phase** | Phase 2 — Core Domain: Meals, Bazar & Utilities |
-| **Last completed** | **P2-BE-1…5** — all Phase 2 backend tasks: DailyMeals/BazarExpenses/UtilityTypes/UtilityPayments/Deposit entities + endpoints; migration `Phase2_Meals_Bazar_Utilities_Deposits` applied to Neon; tests green (24 unit + 30 sqlite e2e + PG isolation suite in CI); contracts frozen in `docs/API_CONVENTIONS.md`; logs in `docs/log/2026-11-02-P2-BE-*.md` |
+| **Current phase** | Phase 2 complete — next: Phase 3 (Financial Logic: Orleans, Summary & Settlement) |
+| **Last completed** | **Phase 2 complete** — backend P2-BE-1…5 (contracts in `docs/API_CONVENTIONS.md`, migration on Neon, tests green incl. CI Postgres suite) + frontend P2-FE-1…5 (meal sheet daily/monthly, expenses hub bazar/utilities/deposits, members QR invite + self-leave); `npm run lint`/`build` green; logs in `docs/log/2026-11-02-P2-*.md` |
 | **In progress** | — |
-| **Next up (parallelizable)** | P2-FE-1/2 (meal sheet on /api/meals) and P2-FE-3/4 (expenses hub on /api/expenses/* + /api/deposits) are unblocked; P2-FE-5 (members polish) anytime |
+| **Next up (parallelizable)** | P3-BE-1 (Orleans silo wiring) leads; P3-BE-* chain after it. Green PR into main is pending user merge |
 | **Blocked** | — |
-| **Last updated** | 2026-11-02 by ZCode (Phase 2 backend) |
+| **Last updated** | 2026-11-02 by ZCode (Phase 2 frontend) |
 
 ---
 
@@ -54,11 +54,11 @@
 - [x] **P2-BE-3** UtilityTypes: manager-scoped CRUD per mess (Electricity, Wi-Fi, Cook Salary…) — *depends: P1-BE-5*
 - [x] **P2-BE-4** UtilityPayments: `POST/GET /api/expenses/utility` linked to UtilityTypes — *depends: P2-BE-3*
 - [x] **P2-BE-5** Member deposits ledger + manager approval endpoints — *depends: P1-BE-5*
-- [ ] **P2-FE-1** Meal sheet — daily entry view (member rows, `- 0 0.5 1 2 +` steppers, guest meals, optimistic updates) — *depends: P2-BE-1, P1-FE-3*
-- [ ] **P2-FE-2** Meal sheet — monthly matrix grid (sticky name col, day columns, monthly totals) — *depends: P2-FE-1*
-- [ ] **P2-FE-3** Expenses hub — bazar tab: filterable table + `+ Add Bazar` drawer with dynamic rows & auto-sum — *depends: P2-BE-2*
-- [ ] **P2-FE-4** Expenses hub — utilities tab (type cards, paid/pending) + deposits ledger tab with approval toggles — *depends: P2-BE-4, P2-BE-5*
-- [ ] **P2-FE-5** Members directory: role badges, invite modal (link/QR + expiry), pending approvals banner — *depends: P1-FE-5*
+- [x] **P2-FE-1** Meal sheet — daily entry view (member rows, `- 0 0.5 1 2 +` steppers, guest meals, optimistic updates) — *depends: P2-BE-1, P1-FE-3*
+- [x] **P2-FE-2** Meal sheet — monthly matrix grid (sticky name col, day columns, monthly totals) — *depends: P2-FE-1*
+- [x] **P2-FE-3** Expenses hub — bazar tab: filterable table + `+ Add Bazar` drawer with dynamic rows & auto-sum — *depends: P2-BE-2*
+- [x] **P2-FE-4** Expenses hub — utilities tab (type cards, paid/pending) + deposits ledger tab with approval toggles — *depends: P2-BE-4, P2-BE-5*
+- [x] **P2-FE-5** Members directory: role badges, invite modal (link/QR + expiry), pending approvals banner — *depends: P1-FE-5*
 
 ## Phase 3 — Financial Logic: Orleans, Summary & Settlement
 
@@ -128,6 +128,8 @@
 | 2026-11-02 | **Bazar line shape: `Quantity` (9,2, default 1) + `Price` (18,2, unit price); line total = Quantity × Price computed in DTO** (never stored). POST accepts 1–50 items sharing date+buyer → one row per item. Bazar/utility/utility-type/deposit-approval writes are manager-only; members read | P2-BE-2; supports the P2-FE-3 drawer (name/qty/price rows, auto-sum) |
 | 2026-11-02 | **UtilityTypes routes: `POST/GET /api/utility-types`, `PUT/DELETE /api/utility-types/{id}`** — unique `(MessId, Name)` (case-insensitive check → 409), `IsActive` soft-disable; DELETE → 409 when payments reference the type | P2-BE-3/4; routes were undefined in BACKEND_PROJECT_PLAN §6 (only payments endpoints existed) |
 | 2026-11-02 | **Deposits routes: `POST/GET /api/deposits`, `PUT /api/deposits/{id}/approve \| reject`** — member-created deposits start `Pending`; **manager-created deposits auto-approve** (ApprovedBy = creator). Only Pending → approve/reject; any other transition → 409. Rejection leaves ApprovedBy/ApprovedAt null | User decision 2026-11-02 (P2 planning); routes were undefined in the plan |
+| 2026-11-02 | **Phase 2 frontend conventions**: features/{meals,expenses}/{services,hooks,schemas,components/*}; query keys exactly per skill bmm-server-state (`['messes', messId, 'meals', {date}]` / `{month,year}`, `'expenses','bazar'`, `'expenses','utility'`, `'deposits'` — params mirrored in the key); monthly views scoped by the Zustand `activeMonth` (top-bar switcher); meal steppers = optimistic updates with a 700 ms debounce (one POST per burst) + `.just-changed` pulse keyframe in globals.css; every money mutation invalidates `['messes', messId, 'summary']` (Phase 3 cache); forms use RHF three-generic pattern `useForm<z.input<S>, unknown, z.output<S>>` because zod-v4 `z.coerce.number()` has `unknown` input | P2-FE-1…5; zod-v4 + RHF resolver mismatch was the build lesson |
+| 2026-11-02 | **Guest-meal UI**: no separate guest counter control — counts include guests (matches the folded B/L/D contract); the daily sheet shows a hint and members add guests into the relevant slot. Money renders via `formatMoney` (en-IN grouping, no currency symbol); new deps `qrcode.react` + shadcn `tabs`/`select` | P2-FE-1/3/5; design overview's "guest counter" superseded by the folded-counts decision |
 
 ## Blockers / Open Questions
 
