@@ -1,13 +1,16 @@
+"use client";
+
+import { env } from "@/lib/env";
+
 /**
- * Session/token store (skeleton — full wiring lands in P1-FE-2).
- *
- * Access token lives in memory only (never localStorage — XSS). The refresh
- * token is a secure HTTP-only cookie managed by the backend, so the client
- * never touches it; refresh is a plain POST without a body token.
+ * In-memory token store (skill bmm-app-router-multitenancy): access token in memory only,
+ * refresh token in the HttpOnly `bmm_refresh` cookie owned by the API. Never localStorage.
  */
 
 let accessToken: string | null = null;
+let authUser: import("@/types/api").AuthUser | null = null;
 let sessionExpiredHandler: (() => void) | null = null;
+let refreshInFlight: Promise<string | null> | null = null;
 
 export function getAccessToken(): string | null {
   return accessToken;
@@ -17,11 +20,20 @@ export function setAccessToken(token: string): void {
   accessToken = token;
 }
 
-export function clearSession(): void {
-  accessToken = null;
+export function getCachedUser() {
+  return authUser;
 }
 
-/** AuthProvider installs the redirect-to-login handler (Phase 1). */
+export function setCachedUser(user: import("@/types/api").AuthUser | null): void {
+  authUser = user;
+}
+
+export function clearSession(): void {
+  accessToken = null;
+  authUser = null;
+}
+
+/** AuthProvider installs the redirect-to-login handler. */
 export function onSessionExpired(handler: () => void): void {
   sessionExpiredHandler = handler;
 }
@@ -30,10 +42,32 @@ export function notifySessionExpired(): void {
   sessionExpiredHandler?.();
 }
 
-/**
- * Single-flight refresh (P1-FE-2 wires the real `POST /api/auth/refresh` call
- * and updates the stored access token). Until then a 401 ends the session.
- */
+/** Single-flight refresh against the API's rotating HttpOnly cookie. Returns null when the session is gone. */
 export async function refreshAccessToken(): Promise<string | null> {
-  return null;
+  refreshInFlight ??= doRefresh().finally(() => {
+    refreshInFlight = null;
+  });
+  return refreshInFlight;
+}
+
+async function doRefresh(): Promise<string | null> {
+  try {
+    const response = await fetch(`${env.apiBaseUrl}/api/auth/refresh`, {
+      method: "POST",
+      credentials: "include",
+    });
+    if (!response.ok) {
+      return null;
+    }
+
+    const body = (await response.json()) as {
+      accessToken: string;
+      user: import("@/types/api").AuthUser;
+    };
+    accessToken = body.accessToken;
+    authUser = body.user;
+    return body.accessToken;
+  } catch {
+    return null;
+  }
 }
