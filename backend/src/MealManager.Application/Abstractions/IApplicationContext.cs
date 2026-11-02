@@ -24,6 +24,8 @@ public interface IApplicationContext
 
     DbSet<Deposit> Deposits { get; }
 
+    DbSet<MonthLock> MonthLocks { get; }
+
     DbSet<RefreshToken> RefreshTokens { get; }
 
     DbSet<OtpCode> OtpCodes { get; }

@@ -319,6 +319,38 @@ namespace MealManager.Infrastructure.Migrations
                     b.ToTable("Messes");
                 });
 
+            modelBuilder.Entity("MealManager.Application.Domain.MonthLock", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("LockedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("LockedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("MessId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Month")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("SnapshotJson")
+                        .HasColumnType("text");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MessId", "Year", "Month")
+                        .IsUnique();
+
+                    b.ToTable("MonthLocks");
+                });
+
             modelBuilder.Entity("MealManager.Application.Domain.OtpCode", b =>
                 {
                     b.Property<Guid>("Id")
@@ -663,6 +695,15 @@ namespace MealManager.Infrastructure.Migrations
                     b.Navigation("Member");
 
                     b.Navigation("Mess");
+                });
+
+            modelBuilder.Entity("MealManager.Application.Domain.MonthLock", b =>
+                {
+                    b.HasOne("MealManager.Application.Domain.Mess", null)
+                        .WithMany()
+                        .HasForeignKey("MessId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("MealManager.Application.Domain.RefreshToken", b =>

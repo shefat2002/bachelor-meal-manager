@@ -35,6 +35,7 @@ public sealed class PostgresDomainIsolationTests : IAsyncLifetime
             await postgres.StartAsync();
             _postgres = postgres;
             var connectionString = _postgres.GetConnectionString();
+            var (siloPort, gatewayPort) = OrleansTestPorts.Get();
             factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
             {
                 builder.UseEnvironment("Development");
@@ -42,6 +43,8 @@ public sealed class PostgresDomainIsolationTests : IAsyncLifetime
                 {
                     ["Jwt:Key"] = BmmApiFactory.TestJwtKey,
                     ["ConnectionStrings:messdb"] = connectionString,
+                    ["Orleans:SiloPort"] = siloPort.ToString(),
+                    ["Orleans:GatewayPort"] = gatewayPort.ToString(),
                 }));
                 builder.ConfigureServices(services =>
                 {

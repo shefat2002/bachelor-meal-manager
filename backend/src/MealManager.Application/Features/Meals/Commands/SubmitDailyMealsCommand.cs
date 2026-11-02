@@ -1,5 +1,6 @@
 using FluentValidation;
 using MealManager.Application.Abstractions;
+using MealManager.Application.Common;
 using MealManager.Application.Domain;
 using MealManager.Application.Exceptions;
 using MediatR;
@@ -39,7 +40,11 @@ public sealed class SubmitDailyMealsCommandValidator : AbstractValidator<SubmitD
     private static bool BeHalfStep(decimal value) => decimal.Truncate(value * 2m) == value * 2m;
 }
 
-public sealed class SubmitDailyMealsCommandHandler(IApplicationContext db, ITenantContext tenant, ICurrentUser currentUser)
+public sealed class SubmitDailyMealsCommandHandler(
+    IApplicationContext db,
+    ITenantContext tenant,
+    ICurrentUser currentUser,
+    ITotalsProjection projection)
     : IRequestHandler<SubmitDailyMealsCommand, IReadOnlyList<DailyMealDto>>
 {
     public async Task<IReadOnlyList<DailyMealDto>> Handle(SubmitDailyMealsCommand request, CancellationToken cancellationToken)
@@ -62,6 +67,8 @@ public sealed class SubmitDailyMealsCommandHandler(IApplicationContext db, ITena
             throw new NotFoundException("Not all target members are active members of this mess.");
         }
 
+        await MonthLockGuard.RequireOpenAsync(db, messId, request.Date, cancellationToken);
+
         var existing = await db.DailyMeals.IgnoreQueryFilters()
             .Where(m => m.MessId == messId && m.Date == request.Date && memberIds.Contains(m.MemberId))
             .ToListAsync(cancellationToken);
@@ -69,10 +76,13 @@ public sealed class SubmitDailyMealsCommandHandler(IApplicationContext db, ITena
 
         var now = DateTime.UtcNow;
         var touched = new List<DailyMeal>(request.Entries.Count);
+        var changes = new List<MealChange>(request.Entries.Count);
         foreach (var entry in request.Entries)
         {
+            var oldUnits = 0m;
             if (byMember.TryGetValue(entry.MemberId, out var meal))
             {
+                oldUnits = meal.Breakfast + meal.Lunch + meal.Dinner;
                 meal.Breakfast = entry.Breakfast;
                 meal.Lunch = entry.Lunch;
                 meal.Dinner = entry.Dinner;
@@ -95,9 +105,16 @@ public sealed class SubmitDailyMealsCommandHandler(IApplicationContext db, ITena
             }
 
             touched.Add(meal);
+            changes.Add(new MealChange(entry.MemberId, oldUnits, entry.Breakfast + entry.Lunch + entry.Dinner));
         }
 
         await db.SaveChangesAsync(cancellationToken);
+
+        if (changes.Any(c => c.OldUnits != c.NewUnits))
+        {
+            await projection.MealsChangedAsync(messId, request.Date, changes, cancellationToken);
+        }
+
         return touched.Select(MealsContractsMap.ToDto).ToList();
     }
 }

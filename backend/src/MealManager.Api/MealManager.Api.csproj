@@ -4,6 +4,7 @@
     <ProjectReference Include="..\MealManager.Application\MealManager.Application.csproj" />
     <ProjectReference Include="..\MealManager.Infrastructure\MealManager.Infrastructure.csproj" />
     <ProjectReference Include="..\MealManager.ServiceDefaults\MealManager.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\MealManager.Grains\MealManager.Grains.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -11,6 +12,8 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
+    <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="10.0.14" />
+    <PackageReference Include="Microsoft.Orleans.Server" Version="10.4.2" />
   </ItemGroup>
 
   <PropertyGroup>

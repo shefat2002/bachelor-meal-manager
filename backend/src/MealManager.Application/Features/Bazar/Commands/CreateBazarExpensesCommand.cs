@@ -1,5 +1,6 @@
 using FluentValidation;
 using MealManager.Application.Abstractions;
+using MealManager.Application.Common;
 using MealManager.Application.Domain;
 using MealManager.Application.Exceptions;
 using MediatR;
@@ -29,7 +30,11 @@ public sealed class CreateBazarExpensesCommandValidator : AbstractValidator<Crea
     }
 }
 
-public sealed class CreateBazarExpensesCommandHandler(IApplicationContext db, ITenantContext tenant, ICurrentUser currentUser)
+public sealed class CreateBazarExpensesCommandHandler(
+    IApplicationContext db,
+    ITenantContext tenant,
+    ICurrentUser currentUser,
+    ITotalsProjection projection)
     : IRequestHandler<CreateBazarExpensesCommand, IReadOnlyList<BazarExpenseDto>>
 {
     public async Task<IReadOnlyList<BazarExpenseDto>> Handle(CreateBazarExpensesCommand request, CancellationToken cancellationToken)
@@ -37,6 +42,7 @@ public sealed class CreateBazarExpensesCommandHandler(IApplicationContext db, IT
         TenantGuards.RequireManager(tenant, "record bazar expenses");
 
         var messId = tenant.MessId!.Value;
+        await MonthLockGuard.RequireOpenAsync(db, messId, request.Date, cancellationToken);
         var buyerId = request.BuyerMemberId ?? currentUser.UserId!.Value;
         if (buyerId != currentUser.UserId)
         {
@@ -63,6 +69,10 @@ public sealed class CreateBazarExpensesCommandHandler(IApplicationContext db, IT
         }).ToList();
         db.BazarExpenses.AddRange(expenses);
         await db.SaveChangesAsync(cancellationToken);
+
+        // Raw (unrounded) Σ qty × price keeps the grain increment identical to a DB rebuild.
+        await projection.BazarAddedAsync(
+            messId, request.Date, request.Items.Sum(i => i.Quantity * i.Price), cancellationToken);
 
         return expenses
             .Select(e => new BazarExpenseDto(e.Id, e.BuyerMemberId, e.ItemName, e.Quantity, e.Price,

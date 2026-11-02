@@ -15,12 +15,12 @@
 
 | Field | Value |
 |---|---|
-| **Current phase** | Phase 2 complete — next: Phase 3 (Financial Logic: Orleans, Summary & Settlement) |
-| **Last completed** | **Phase 2 complete** — backend P2-BE-1…5 (contracts in `docs/API_CONVENTIONS.md`, migration on Neon, tests green incl. CI Postgres suite) + frontend P2-FE-1…5 (meal sheet daily/monthly, expenses hub bazar/utilities/deposits, members QR invite + self-leave); `npm run lint`/`build` green; logs in `docs/log/2026-11-02-P2-*.md` |
+| **Current phase** | Phase 3 — backend complete, next: P3-FE-* (dashboard, charts, settlement) |
+| **Last completed** | **P3-BE-1…5** — Orleans 10.4.2 silo in the API process (localhost clustering), `MessGrain`/`MemberGrain` (DB-rebuild-on-miss, sequential turns), `GET /api/summary/messes/{messId}` (§5 equations, hand-computed e2e green), HybridCache summary cache (+Redis L2 when Docker), month lock w/ durable snapshots (migration `Phase3_Month_Locks` on Neon); tests 29 unit + 33 integration incl. concurrent-writes regression; logs in `docs/log/2026-11-03-P3-BE-*.md` |
 | **In progress** | — |
-| **Next up (parallelizable)** | P3-BE-1 (Orleans silo wiring) leads; P3-BE-* chain after it. Green PR into main is pending user merge |
+| **Next up (parallelizable)** | P3-FE-1…4 (overview KPIs, Recharts trend, settlement table + lock toggle, invalidation already wired in P2) — all unblocked on the frozen summary contract |
 | **Blocked** | — |
-| **Last updated** | 2026-11-02 by ZCode (Phase 2 frontend) |
+| **Last updated** | 2026-11-03 by ZCode (Phase 3 backend) |
 
 ---
 
@@ -62,11 +62,11 @@
 
 ## Phase 3 — Financial Logic: Orleans, Summary & Settlement
 
-- [ ] **P3-BE-1** Orleans silo wiring in Api/host: clustering config, grain storage (Redis/PostgreSQL) — *depends: Phase 2 BE tasks*
-- [ ] **P3-BE-2** `MessGrain` + `MemberGrain`: running totals (meals, expenses, deposits), sequential concurrency, persistence — *depends: P3-BE-1*
-- [ ] **P3-BE-3** `GET /api/summary/messes/{messId}`: meal rate, individual costs, surplus/arrear, on-hand balance (grain-computed) — *depends: P3-BE-2*
-- [ ] **P3-BE-4** Redis caching for summary/meal rate + invalidation on meals/expenses/deposits writes — *depends: P3-BE-3*
-- [ ] **P3-BE-5** Month lock: freeze edits after settlement — *depends: P3-BE-3*
+- [x] **P3-BE-1** Orleans silo wiring in Api/host: clustering config, grain storage (Redis/PostgreSQL) — *depends: Phase 2 BE tasks*
+- [x] **P3-BE-2** `MessGrain` + `MemberGrain`: running totals (meals, expenses, deposits), sequential concurrency, persistence — *depends: P3-BE-1*
+- [x] **P3-BE-3** `GET /api/summary/messes/{messId}`: meal rate, individual costs, surplus/arrear, on-hand balance (grain-computed) — *depends: P3-BE-2*
+- [x] **P3-BE-4** Redis caching for summary/meal rate + invalidation on meals/expenses/deposits writes — *depends: P3-BE-3*
+- [x] **P3-BE-5** Month lock: freeze edits after settlement — *depends: P3-BE-3*
 - [ ] **P3-FE-1** Overview dashboard: 4 KPI cards (meal rate, on-hand, expenditure, my status) + today's meal snapshot + recent activity — *depends: P3-BE-3*
 - [ ] **P3-FE-2** Recharts: daily bazar spend vs meal volume trend chart — *depends: P3-FE-1*
 - [ ] **P3-FE-3** Master settlement table + export/close bar (PDF button, Lock Month toggle) — *depends: P3-BE-5*
@@ -130,6 +130,12 @@
 | 2026-11-02 | **Deposits routes: `POST/GET /api/deposits`, `PUT /api/deposits/{id}/approve \| reject`** — member-created deposits start `Pending`; **manager-created deposits auto-approve** (ApprovedBy = creator). Only Pending → approve/reject; any other transition → 409. Rejection leaves ApprovedBy/ApprovedAt null | User decision 2026-11-02 (P2 planning); routes were undefined in the plan |
 | 2026-11-02 | **Phase 2 frontend conventions**: features/{meals,expenses}/{services,hooks,schemas,components/*}; query keys exactly per skill bmm-server-state (`['messes', messId, 'meals', {date}]` / `{month,year}`, `'expenses','bazar'`, `'expenses','utility'`, `'deposits'` — params mirrored in the key); monthly views scoped by the Zustand `activeMonth` (top-bar switcher); meal steppers = optimistic updates with a 700 ms debounce (one POST per burst) + `.just-changed` pulse keyframe in globals.css; every money mutation invalidates `['messes', messId, 'summary']` (Phase 3 cache); forms use RHF three-generic pattern `useForm<z.input<S>, unknown, z.output<S>>` because zod-v4 `z.coerce.number()` has `unknown` input | P2-FE-1…5; zod-v4 + RHF resolver mismatch was the build lesson |
 | 2026-11-02 | **Guest-meal UI**: no separate guest counter control — counts include guests (matches the folded B/L/D contract); the daily sheet shows a hint and members add guests into the relevant slot. Money renders via `formatMoney` (en-IN grouping, no currency symbol); new deps `qrcode.react` + shadcn `tabs`/`select` | P2-FE-1/3/5; design overview's "guest counter" superseded by the folded-counts decision |
+| 2026-11-03 | **Orleans topology**: single silo in the API process with **localhost clustering** (ports configurable via `Orleans:SiloPort/GatewayPort`); grain state = **in-grain memory with DB-rebuild-on-miss** (named `messState` memory provider reserved for an ADO.NET-on-Neon swap); no Redis grain storage (no first-party provider). Multi-silo = extract to OrleansHost + ADO.NET clustering/storage (documented path, not built) | User decision 2026-11-02 (P3 planning); dev machine has no Docker/Redis, and the rebuild pattern satisfies durability (DB is the record) |
+| 2026-11-03 | **Grain correctness rule**: write projections (deltas) apply **only to resident grain state** — never rebuild-then-apply (the DB write already committed; rebuild includes it, so a delta on top double-counts). Evicted state simply rebuilds correctly on next read. Post-commit projection failures are logged + swallowed (rebuild self-heals) | P3-BE-2; the subtle bug class this rule prevents |
+| 2026-11-03 | **Summary math**: meal rate = bazar ÷ units (utilities are shared, not in the rate); **utility costs split equally per active member** (count queried fresh per summary — not snapshotted in grain state); **pending deposits excluded everywhere** (collected = approved only); rounding = rate 4dp, member rows 2dp; `MessSummaryDto` carries per-member rows + `daily[]` (date, bazarSpend, mealUnits) so the FE trend chart needs one fetch | User decision 2026-11-02 (P3 planning); §5 left the share basis unspecified |
+| 2026-11-03 | **Summary/cache contract**: `GET /api/summary/messes/{messId}?year&month` (path id must equal `X-Mess-Id` → else 404; defaults = current UTC month); month lock = `PUT /api/summary/messes/{messId}/month-lock {year,month,locked}` (manager-only); cache = **HybridCache** key `summary:{messId}:{y}-{m}` (L1 always; L2 Redis via `AddStackExchangeRedisCache` — renamed from `AddStackExchangeRedisDistributedCache` in .NET 10 — when Aspire injects `ConnectionStrings:redis`); push invalidation from `ITotalsProjection` after every write; 15-min safety expiry. Month lock = `MonthLocks` row whose `SnapshotJson` (serialized `MessSummaryDto`) is served verbatim while locked; unlock deletes it | P3-BE-3/4/5 |
+| 2026-11-03 | **Application stays Orleans-free**: grain transport records (`[GenerateSerializer]`) live in `MealManager.Grains`; handlers/queries depend only on `ITotalsProjection`/`ISummaryProvider` ports defined in Application | P3-BE-2; keeps UnitTests/Infrastructure clean of Orleans runtime refs |
+| 2026-11-03 | **Test infra**: sqlite factories use the **shared-cache in-memory pattern** (keeper connection + EF-pooled connections per request) — the old single-shared-connection funnel serialized/broke concurrent requests; every test factory also gets **random Orleans ports** (parallel co-hosted silos collide on 11111/30000) | P3-BE-1/2; ConcurrentWritesTests (the Orleans regression test) requires real request concurrency |
 
 ## Blockers / Open Questions
 

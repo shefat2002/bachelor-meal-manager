@@ -14,16 +14,28 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace MealManager.IntegrationTests;
 
-/// <summary>In-memory Sqlite-backed API host: full pipeline (auth, tenant middleware, filters) without Docker.</summary>
+/// <summary>
+/// In-memory Sqlite-backed API host (full pipeline: auth, tenant middleware, co-hosted Orleans silo).
+/// The database uses the shared-cache in-memory pattern: one keeper connection keeps the DB alive
+/// while EF pools its own connections — concurrent requests each get a connection, so parallel write
+/// tests exercise real interleaving instead of serializing on a single shared connection.
+/// </summary>
 public sealed class BmmApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
     public const string TestJwtKey = "test-only-jwt-signing-key-0123456789abcdef";
 
-    private readonly SqliteConnection _connection = new("DataSource=:memory:");
+    // Unique per factory instance: parallel test classes never share a database.
+    private readonly string _databaseName = $"bmm_test_{Guid.NewGuid():N}";
+
+    private string ConnectionString => $"Data Source=file:{_databaseName}?mode=memory&cache=shared;Default Timeout=30";
+
+    private SqliteConnection? _keeper;
 
     public async Task InitializeAsync()
     {
-        await _connection.OpenAsync();
+        // The keeper connection pins the shared in-memory DB for the whole test class lifetime.
+        _keeper = new SqliteConnection(ConnectionString);
+        await _keeper.OpenAsync();
         using var scope = Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<ApplicationContext>();
         await db.Database.EnsureCreatedAsync();
@@ -31,13 +43,16 @@ public sealed class BmmApiFactory : WebApplicationFactory<Program>, IAsyncLifeti
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        var (siloPort, gatewayPort) = OrleansTestPorts.Get();
         builder.UseEnvironment("Development");
         builder.ConfigureAppConfiguration((_, config) => config.AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["Jwt:Key"] = TestJwtKey,
             ["Jwt:Issuer"] = "test",
             ["Jwt:Audience"] = "test",
-            ["ConnectionStrings:messdb"] = "DataSource=:memory:",
+            ["ConnectionStrings:messdb"] = ConnectionString,
+            ["Orleans:SiloPort"] = siloPort.ToString(),
+            ["Orleans:GatewayPort"] = gatewayPort.ToString(),
         }));
 
         builder.ConfigureServices(services =>
@@ -47,7 +62,7 @@ public sealed class BmmApiFactory : WebApplicationFactory<Program>, IAsyncLifeti
             services.RemoveAll(typeof(IDbContextOptionsConfiguration<ApplicationContext>));
             services.RemoveAll<DbContextOptions<ApplicationContext>>();
             services.RemoveAll<DbContextOptions>();
-            services.AddDbContext<ApplicationContext>(options => options.UseSqlite(_connection));
+            services.AddDbContext<ApplicationContext>(options => options.UseSqlite(ConnectionString));
 
             // The Postgres readiness probe has no real DB in the sqlite environment — drop it.
             services.PostConfigure<HealthCheckServiceOptions>(options =>
@@ -63,7 +78,11 @@ public sealed class BmmApiFactory : WebApplicationFactory<Program>, IAsyncLifeti
 
     async Task IAsyncLifetime.DisposeAsync()
     {
-        await _connection.DisposeAsync();
+        if (_keeper is not null)
+        {
+            await _keeper.DisposeAsync();
+        }
+
         await base.DisposeAsync();
     }
 }
