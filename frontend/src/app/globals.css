@@ -165,4 +165,16 @@
   .num {
     @apply font-mono tabular-nums;
   }
+  /* Optimistic-update pulse on meal cells (skill bmm-server-state: subtle pulse on change) */
+  .just-changed {
+    animation: cell-pulse 0.6s ease-out;
+  }
+  @keyframes cell-pulse {
+    0% {
+      background-color: color-mix(in oklab, var(--primary) 22%, transparent);
+    }
+    100% {
+      background-color: transparent;
+    }
+  }
 }

@@ -1,8 +1,10 @@
 "use client";
 
-import { Check, Copy, ShieldCheck, UserRoundX } from "lucide-react";
+import { Check, Copy, LogOut, ShieldCheck, UserRoundX } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { QRCodeSVG } from "qrcode.react";
 import { toast } from "sonner";
 
 import { Authorize } from "@/components/authorize";
@@ -10,6 +12,13 @@ import { useCurrentMess } from "@/components/mess-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,10 +44,11 @@ import {
 } from "@/features/messes/hooks";
 import { useAuth } from "@/lib/auth-context";
 
-/** Member directory: pending-approvals banner (managers), invite generator, roles, leave (§3.5). */
+/** Member directory: pending-approvals banner (managers), invite dialog (link + QR), roles, self-leave (§3.5). */
 export default function MembersPage() {
   const { messId } = useCurrentMess();
   const { user } = useAuth();
+  const router = useRouter();
   const { data, isLoading } = useMembers(messId);
   const createInvite = useCreateInvite(messId);
   const approve = useApproveMember(messId);
@@ -60,6 +70,21 @@ export default function MembersPage() {
     }
   };
 
+  const onLeave = () => {
+    if (!user || !window.confirm(`Leave this mess? You'll need a new invite to rejoin.`)) return;
+    remove.mutate(user.id, {
+      onSuccess: () => {
+        toast.success("You left the mess.");
+        router.push("/dashboard");
+      },
+      onError: (error) =>
+        toast.error(
+          (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail ??
+            "Could not leave the mess.",
+        ),
+    });
+  };
+
   const inviteUrl = inviteToken
     ? `${typeof window !== "undefined" ? window.location.origin : ""}/invite/${inviteToken}`
     : null;
@@ -75,26 +100,36 @@ export default function MembersPage() {
         </Authorize>
       </div>
 
-      {inviteUrl && (
-        <Card>
-          <CardContent className="flex flex-wrap items-center gap-2 py-4 text-sm">
-            <span className="text-muted-foreground">Invite link (valid 7 days):</span>
-            <code className="max-w-full truncate rounded bg-muted px-2 py-1 text-xs">
-              {inviteUrl}
-            </code>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                void navigator.clipboard.writeText(inviteUrl);
-                toast.success("Invite link copied");
-              }}
-            >
-              <Copy className="size-4" /> Copy
-            </Button>
-          </CardContent>
-        </Card>
-      )}
+      <Dialog open={inviteUrl !== null} onOpenChange={(open) => !open && setInviteToken(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Invite link</DialogTitle>
+            <DialogDescription>
+              Single-use, valid for 7 days. Share it or the QR code.
+            </DialogDescription>
+          </DialogHeader>
+          {inviteUrl && (
+            <div className="flex flex-col items-center gap-4">
+              <div className="rounded-lg border bg-white p-3">
+                <QRCodeSVG value={inviteUrl} size={176} />
+              </div>
+              <code className="w-full rounded bg-muted px-2 py-1.5 text-center text-xs break-all">
+                {inviteUrl}
+              </code>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => {
+                  void navigator.clipboard.writeText(inviteUrl);
+                  toast.success("Invite link copied");
+                }}
+              >
+                <Copy className="size-4" /> Copy link
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {pending.length > 0 && (
         <Authorize roles={["MealManager", "superAdmin"]}>
@@ -207,13 +242,24 @@ export default function MembersPage() {
         </div>
       )}
 
-      <p className="text-sm text-muted-foreground">
-        Want to leave this mess?{" "}
-        <Link className="text-primary hover:underline" href="/dashboard">
-          Manage your messes
-        </Link>
-        .
-      </p>
+      <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
+        <p>
+          Manage your messes on the{" "}
+          <Link className="text-primary hover:underline" href="/dashboard">
+            dashboard
+          </Link>
+          .
+        </p>
+        <Button
+          variant="outline"
+          size="sm"
+          className="text-arrear"
+          disabled={remove.isPending}
+          onClick={onLeave}
+        >
+          <LogOut className="size-4" /> Leave this mess
+        </Button>
+      </div>
     </div>
   );
 }
