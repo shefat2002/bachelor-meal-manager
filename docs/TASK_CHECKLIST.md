@@ -15,12 +15,12 @@
 
 | Field | Value |
 |---|---|
-| **Current phase** | Phase 3 — backend complete, next: P3-FE-* (dashboard, charts, settlement) |
-| **Last completed** | **P3-BE-1…5** — Orleans 10.4.2 silo in the API process (localhost clustering), `MessGrain`/`MemberGrain` (DB-rebuild-on-miss, sequential turns), `GET /api/summary/messes/{messId}` (§5 equations, hand-computed e2e green), HybridCache summary cache (+Redis L2 when Docker), month lock w/ durable snapshots (migration `Phase3_Month_Locks` on Neon); tests 29 unit + 33 integration incl. concurrent-writes regression; logs in `docs/log/2026-11-03-P3-BE-*.md` |
+| **Current phase** | **Phase 3 complete** — next: Phase 4 (Async Jobs, Notifications & Observability) |
+| **Last completed** | **Phase 3 complete** — backend P3-BE-1…5 (Orleans grains, summary endpoint, HybridCache, month lock; logs `2026-11-03-P3-BE-*.md`) + frontend P3-FE-1…4 (overview KPIs/trend/activity, settlement table + lock toggle, invalidation verified); `npm run lint`/`build` green; logs in `docs/log/2026-11-03-P3-FE-*.md` |
 | **In progress** | — |
-| **Next up (parallelizable)** | P3-FE-1…4 (overview KPIs, Recharts trend, settlement table + lock toggle, invalidation already wired in P2) — all unblocked on the frozen summary contract |
+| **Next up (parallelizable)** | P4-BE-1 (RabbitMQ topology) leads the Phase 4 BE chain; P4-BE-5 (Serilog) anytime. Green PRs pending user merge |
 | **Blocked** | — |
-| **Last updated** | 2026-11-03 by ZCode (Phase 3 backend) |
+| **Last updated** | 2026-11-03 by ZCode (Phase 3 frontend) |
 
 ---
 
@@ -67,10 +67,10 @@
 - [x] **P3-BE-3** `GET /api/summary/messes/{messId}`: meal rate, individual costs, surplus/arrear, on-hand balance (grain-computed) — *depends: P3-BE-2*
 - [x] **P3-BE-4** Redis caching for summary/meal rate + invalidation on meals/expenses/deposits writes — *depends: P3-BE-3*
 - [x] **P3-BE-5** Month lock: freeze edits after settlement — *depends: P3-BE-3*
-- [ ] **P3-FE-1** Overview dashboard: 4 KPI cards (meal rate, on-hand, expenditure, my status) + today's meal snapshot + recent activity — *depends: P3-BE-3*
-- [ ] **P3-FE-2** Recharts: daily bazar spend vs meal volume trend chart — *depends: P3-FE-1*
-- [ ] **P3-FE-3** Master settlement table + export/close bar (PDF button, Lock Month toggle) — *depends: P3-BE-5*
-- [ ] **P3-FE-4** Summary auto-invalidation wired to meal/expense/deposit mutations — *depends: P3-BE-3*
+- [x] **P3-FE-1** Overview dashboard: 4 KPI cards (meal rate, on-hand, expenditure, my status) + today's meal snapshot + recent activity — *depends: P3-BE-3*
+- [x] **P3-FE-2** Recharts: daily bazar spend vs meal volume trend chart — *depends: P3-FE-1*
+- [x] **P3-FE-3** Master settlement table + export/close bar (PDF button, Lock Month toggle) — *depends: P3-BE-5*
+- [x] **P3-FE-4** Summary auto-invalidation wired to meal/expense/deposit mutations — *depends: P3-BE-3*
 
 ## Phase 4 — Async Jobs, Notifications & Observability
 
@@ -136,6 +136,7 @@
 | 2026-11-03 | **Summary/cache contract**: `GET /api/summary/messes/{messId}?year&month` (path id must equal `X-Mess-Id` → else 404; defaults = current UTC month); month lock = `PUT /api/summary/messes/{messId}/month-lock {year,month,locked}` (manager-only); cache = **HybridCache** key `summary:{messId}:{y}-{m}` (L1 always; L2 Redis via `AddStackExchangeRedisCache` — renamed from `AddStackExchangeRedisDistributedCache` in .NET 10 — when Aspire injects `ConnectionStrings:redis`); push invalidation from `ITotalsProjection` after every write; 15-min safety expiry. Month lock = `MonthLocks` row whose `SnapshotJson` (serialized `MessSummaryDto`) is served verbatim while locked; unlock deletes it | P3-BE-3/4/5 |
 | 2026-11-03 | **Application stays Orleans-free**: grain transport records (`[GenerateSerializer]`) live in `MealManager.Grains`; handlers/queries depend only on `ITotalsProjection`/`ISummaryProvider` ports defined in Application | P3-BE-2; keeps UnitTests/Infrastructure clean of Orleans runtime refs |
 | 2026-11-03 | **Test infra**: sqlite factories use the **shared-cache in-memory pattern** (keeper connection + EF-pooled connections per request) — the old single-shared-connection funnel serialized/broke concurrent requests; every test factory also gets **random Orleans ports** (parallel co-hosted silos collide on 11111/30000) | P3-BE-1/2; ConcurrentWritesTests (the Orleans regression test) requires real request concurrency |
+| 2026-11-03 | **Phase 3 frontend**: charts via the shadcn `chart` wrapper over **recharts 3.8** (ComposedChart: bazar bars + meal-units line, `--chart-1/2` tokens, empty-month state); overview = 4 §5 KPI cards + today snapshot (`useDailyMeals(today)`) + merged bazar/deposit activity feed, all scoped by `activeMonth`; reports = server-computed settlement rows only (never client-derived money math) + footer totals + surplus/arrear badges + lock toggle (confirm → `PUT month-lock`) + browser-print "Export PDF" (real PDF = P4-BE-3); summary feature = `features/summary/{services,hooks}` with key `['messes', messId, 'summary', {month, year}]` | P3-FE-1…4; PDF deferred by design to Phase 4 |
 
 ## Blockers / Open Questions
 
