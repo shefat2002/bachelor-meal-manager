@@ -58,3 +58,62 @@ export interface JoinedMessResult {
   messName: string;
   status: string;
 }
+
+// ---- Phase 2 domain contracts (mirror docs/API_CONVENTIONS.md §6) ----
+
+export type DepositStatus = "Pending" | "Approved" | "Rejected";
+
+export interface DailyMeal {
+  id: string;
+  memberId: string;
+  date: string; // YYYY-MM-DD
+  breakfast: number;
+  lunch: number;
+  dinner: number;
+  totalUnits: number;
+  createdAt: string;
+  updatedAt?: string | null;
+}
+
+export interface BazarExpense {
+  id: string;
+  buyerMemberId: string;
+  itemName: string;
+  quantity: number;
+  price: number; // unit price
+  lineTotal: number;
+  date: string;
+  createdAt: string;
+}
+
+export interface UtilityType {
+  id: string;
+  name: string;
+  description: string | null;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface UtilityPayment {
+  id: string;
+  utilityTypeId: string;
+  utilityTypeName: string;
+  amount: number;
+  paymentDate: string;
+  note: string | null;
+  createdBy: string;
+  createdAt: string;
+}
+
+export interface Deposit {
+  id: string;
+  memberId: string;
+  memberName: string;
+  amount: number;
+  date: string;
+  status: DepositStatus;
+  approvedBy: string | null;
+  approvedAt: string | null;
+  note: string | null;
+  createdAt: string;
+}
