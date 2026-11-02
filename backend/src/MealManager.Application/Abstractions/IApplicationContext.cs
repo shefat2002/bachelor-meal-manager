@@ -14,6 +14,16 @@ public interface IApplicationContext
 
     DbSet<InviteLink> InviteLinks { get; }
 
+    DbSet<DailyMeal> DailyMeals { get; }
+
+    DbSet<BazarExpense> BazarExpenses { get; }
+
+    DbSet<UtilityType> UtilityTypes { get; }
+
+    DbSet<UtilityPayment> UtilityPayments { get; }
+
+    DbSet<Deposit> Deposits { get; }
+
     DbSet<RefreshToken> RefreshTokens { get; }
 
     DbSet<OtpCode> OtpCodes { get; }

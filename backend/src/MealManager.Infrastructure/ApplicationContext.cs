@@ -16,6 +16,16 @@ public class ApplicationContext(
 
     public DbSet<InviteLink> InviteLinks => Set<InviteLink>();
 
+    public DbSet<DailyMeal> DailyMeals => Set<DailyMeal>();
+
+    public DbSet<BazarExpense> BazarExpenses => Set<BazarExpense>();
+
+    public DbSet<UtilityType> UtilityTypes => Set<UtilityType>();
+
+    public DbSet<UtilityPayment> UtilityPayments => Set<UtilityPayment>();
+
+    public DbSet<Deposit> Deposits => Set<Deposit>();
+
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
     public DbSet<OtpCode> OtpCodes => Set<OtpCode>();
@@ -82,6 +92,60 @@ public class ApplicationContext(
         {
             e.Property(o => o.PhoneNumber).IsRequired().HasMaxLength(20);
             e.HasIndex(o => new { o.PhoneNumber, o.CreatedAt });
+        });
+
+        b.Entity<DailyMeal>(e =>
+        {
+            e.Property(m => m.Breakfast).HasPrecision(4, 1);
+            e.Property(m => m.Lunch).HasPrecision(4, 1);
+            e.Property(m => m.Dinner).HasPrecision(4, 1);
+            // Upsert key (P2-BE-1) + hot query path tenant+date scoped.
+            e.HasIndex(m => new { m.MessId, m.MemberId, m.Date }).IsUnique();
+            e.HasIndex(m => new { m.MessId, m.Date });
+            e.HasQueryFilter(m => m.MessId == tenant.MessId);
+            e.HasOne<Mess>().WithMany().HasForeignKey(m => m.MessId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<Member>().WithMany().HasForeignKey(m => m.MemberId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<BazarExpense>(e =>
+        {
+            e.Property(x => x.ItemName).IsRequired().HasMaxLength(200);
+            e.Property(x => x.Quantity).HasPrecision(9, 2);
+            e.Property(x => x.Price).HasPrecision(18, 2);
+            e.HasIndex(x => new { x.MessId, x.Date });
+            e.HasQueryFilter(x => x.MessId == tenant.MessId);
+            e.HasOne<Mess>().WithMany().HasForeignKey(x => x.MessId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<Member>().WithMany().HasForeignKey(x => x.BuyerMemberId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<UtilityType>(e =>
+        {
+            e.Property(t => t.Name).IsRequired().HasMaxLength(100);
+            e.Property(t => t.Description).HasMaxLength(300);
+            e.HasIndex(t => new { t.MessId, t.Name }).IsUnique();
+            e.HasQueryFilter(t => t.MessId == tenant.MessId);
+            e.HasOne<Mess>().WithMany().HasForeignKey(t => t.MessId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<UtilityPayment>(e =>
+        {
+            e.Property(p => p.Amount).HasPrecision(18, 2);
+            e.Property(p => p.Note).HasMaxLength(300);
+            e.HasIndex(p => new { p.MessId, p.PaymentDate });
+            e.HasQueryFilter(p => p.MessId == tenant.MessId);
+            e.HasOne<Mess>().WithMany().HasForeignKey(p => p.MessId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<UtilityType>().WithMany().HasForeignKey(p => p.UtilityTypeId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<Deposit>(e =>
+        {
+            e.Property(d => d.Amount).HasPrecision(18, 2);
+            e.Property(d => d.Status).HasConversion<string>().HasMaxLength(20);
+            e.Property(d => d.Note).HasMaxLength(300);
+            e.HasIndex(d => new { d.MessId, d.Date });
+            e.HasQueryFilter(d => d.MessId == tenant.MessId);
+            e.HasOne<Mess>().WithMany().HasForeignKey(d => d.MessId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<Member>().WithMany().HasForeignKey(d => d.MemberId).OnDelete(DeleteBehavior.Cascade);
         });
     }
 }
