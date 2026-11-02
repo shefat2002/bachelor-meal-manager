@@ -15,12 +15,12 @@
 
 | Field | Value |
 |---|---|
-| **Current phase** | Phase 1 — Identity, Auth & Multi-Tenancy Core |
-| **Last completed** | **Phase 0 complete** — all 7 tasks (P0-BE-1/2, P0-FE-1/2, P0-IN-1, P0-DX-1/2); logs in `docs/log/2026-11-02-P0-*.md` |
+| **Current phase** | Phase 2 — Core Domain: Meals, Bazar & Utilities |
+| **Last completed** | **P2-BE-1…5** — all Phase 2 backend tasks: DailyMeals/BazarExpenses/UtilityTypes/UtilityPayments/Deposit entities + endpoints; migration `Phase2_Meals_Bazar_Utilities_Deposits` applied to Neon; tests green (24 unit + 30 sqlite e2e + PG isolation suite in CI); contracts frozen in `docs/API_CONVENTIONS.md`; logs in `docs/log/2026-11-02-P2-BE-*.md` |
 | **In progress** | — |
-| **Next up (parallelizable)** | P1-BE-1 (Identity), P1-FE-1 waits on the P1-BE-2 contract; backend leads each phase slightly |
+| **Next up (parallelizable)** | P2-FE-1/2 (meal sheet on /api/meals) and P2-FE-3/4 (expenses hub on /api/expenses/* + /api/deposits) are unblocked; P2-FE-5 (members polish) anytime |
 | **Blocked** | — |
-| **Last updated** | 2026-11-02 by ZCode (Phase 0) |
+| **Last updated** | 2026-11-02 by ZCode (Phase 2 backend) |
 
 ---
 
@@ -36,24 +36,24 @@
 
 ## Phase 1 — Identity, Auth & Multi-Tenancy Core
 
-- [ ] **P1-BE-1** ASP.NET Core Identity: phone-number accounts, password + OTP login — *depends: P0-BE-1/2*
-- [ ] **P1-BE-2** JWT endpoints: login, refresh, logout; role claims (SuperAdmin, MealManager, Member) — *depends: P1-BE-1*
-- [ ] **P1-BE-3** Mess entity + migrations + `POST/GET/PUT/DELETE /api/messes` (creator → Meal Manager) — *depends: P1-BE-2*
-- [ ] **P1-BE-4** MembersMesses M2M + invite-link join + approval workflow + `PUT /api/members/{id}/role` — *depends: P1-BE-3*
-- [ ] **P1-BE-5** EF Core global query filters by `MessId` + tenant-isolation integration tests — *depends: P1-BE-3*
-- [ ] **P1-FE-1** `(auth)` route group: login/verify screens with RHF+Zod forms — *depends: P1-BE-2 (contract), P0-FE-1*
-- [ ] **P1-FE-2** Token storage/refresh + Axios interceptors (Bearer + `X-Mess-Id` auto-attach) — *depends: P1-FE-1*
-- [ ] **P1-FE-3** Dashboard app shell: sidebar, top utility bar, mess switcher, mobile bottom nav — *depends: P1-FE-2*
-- [ ] **P1-FE-4** RBAC: `<Authorize roles={[...]}>` wrapper + middleware route protection — *depends: P1-FE-2*
-- [ ] **P1-FE-5** Mess create/join UI + invite link handling + pending-approvals actions — *depends: P1-BE-4, P1-FE-3*
+- [x] **P1-BE-1** ASP.NET Core Identity: phone-number accounts, password + OTP login — *depends: P0-BE-1/2*
+- [x] **P1-BE-2** JWT endpoints: login, refresh, logout; role claims (SuperAdmin, MealManager, Member) — *depends: P1-BE-1*
+- [x] **P1-BE-3** Mess entity + migrations + `POST/GET/PUT/DELETE /api/messes` (creator → Meal Manager) — *depends: P1-BE-2*
+- [x] **P1-BE-4** MembersMesses M2M + invite-link join + approval workflow + `PUT /api/members/{id}/role` — *depends: P1-BE-3*
+- [x] **P1-BE-5** EF Core global query filters by `MessId` + tenant-isolation integration tests — *depends: P1-BE-3*
+- [x] **P1-FE-1** `(auth)` route group: login/verify screens with RHF+Zod forms — *depends: P1-BE-2 (contract), P0-FE-1*
+- [x] **P1-FE-2** Token storage/refresh + Axios interceptors (Bearer + `X-Mess-Id` auto-attach) — *depends: P1-FE-1*
+- [x] **P1-FE-3** Dashboard app shell: sidebar, top utility bar, mess switcher, mobile bottom nav — *depends: P1-FE-2*
+- [x] **P1-FE-4** RBAC: `<Authorize roles={[...]}>` wrapper + middleware route protection — *depends: P1-FE-2*
+- [x] **P1-FE-5** Mess create/join UI + invite link handling + pending-approvals actions — *depends: P1-BE-4, P1-FE-3*
 
 ## Phase 2 — Core Domain: Meals, Bazar & Utilities
 
-- [ ] **P2-BE-1** DailyMeals: `POST/GET /api/meals` (per member/date B/L/D counts, filtering+sorting+pagination) — *depends: P1-BE-5*
-- [ ] **P2-BE-2** BazarExpenses: `POST/GET /api/expenses/bazar` (items, price, date, buyer) — *depends: P1-BE-5*
-- [ ] **P2-BE-3** UtilityTypes: manager-scoped CRUD per mess (Electricity, Wi-Fi, Cook Salary…) — *depends: P1-BE-5*
-- [ ] **P2-BE-4** UtilityPayments: `POST/GET /api/expenses/utility` linked to UtilityTypes — *depends: P2-BE-3*
-- [ ] **P2-BE-5** Member deposits ledger + manager approval endpoints — *depends: P1-BE-5*
+- [x] **P2-BE-1** DailyMeals: `POST/GET /api/meals` (per member/date B/L/D counts, filtering+sorting+pagination) — *depends: P1-BE-5*
+- [x] **P2-BE-2** BazarExpenses: `POST/GET /api/expenses/bazar` (items, price, date, buyer) — *depends: P1-BE-5*
+- [x] **P2-BE-3** UtilityTypes: manager-scoped CRUD per mess (Electricity, Wi-Fi, Cook Salary…) — *depends: P1-BE-5*
+- [x] **P2-BE-4** UtilityPayments: `POST/GET /api/expenses/utility` linked to UtilityTypes — *depends: P2-BE-3*
+- [x] **P2-BE-5** Member deposits ledger + manager approval endpoints — *depends: P1-BE-5*
 - [ ] **P2-FE-1** Meal sheet — daily entry view (member rows, `- 0 0.5 1 2 +` steppers, guest meals, optimistic updates) — *depends: P2-BE-1, P1-FE-3*
 - [ ] **P2-FE-2** Meal sheet — monthly matrix grid (sticky name col, day columns, monthly totals) — *depends: P2-FE-1*
 - [ ] **P2-FE-3** Expenses hub — bazar tab: filterable table + `+ Add Bazar` drawer with dynamic rows & auto-sum — *depends: P2-BE-2*
@@ -115,6 +115,19 @@
 | 2026-11-02 | Frontend core libs: Axios instance w/ Bearer + `X-Mess-Id` request interceptor (mess-id source installed by MessProvider in P1) and single-flight 401 refresh/replay skeleton; TanStack Query defaults (staleTime 30s, retry≤2 skip 4xx); access token in memory only | P0-FE-2; skills `bmm-app-router-multitenancy`, `bmm-server-state` |
 | 2026-11-02 | CI = one `.github/workflows/ci.yml`, two parallel jobs (backend setup-dotnet via `global.json` → restore/build/test; frontend setup-node via `frontend/.nvmrc` → npm ci/lint/build); no Docker/registry/deploy until Phase 5 | P0-IN-1; skill `bmm-cicd-github-actions` Phase-0 shape |
 | 2026-11-02 | API contract fixed in `docs/API_CONVENTIONS.md`: `ApiErrorResponse {type,title,status,detail,errors,traceId}`; error codes VALIDATION_ERROR/TENANT_REQUIRED/UNAUTHENTICATED/FORBIDDEN/NOT_FOUND/CONFLICT/RATE_LIMITED/INTERNAL_ERROR; `PaginatedResult<T> {items,page,pageSize,totalCount}`; `?page=&pageSize≤100&sortBy=<whitelist>&sortDir=asc|desc&from=&to=`; camelCase; dates `YYYY-MM-DD`; no versioning yet | P0-DX-1; binding for backend + frontend `types/api.ts` |
+| 2026-11-02 | **Refresh-token contract**: rotating refresh tokens travel ONLY in the HttpOnly `bmm_refresh` cookie (Path=/api/auth, SameSite=Lax, Secure outside dev, 7d); JSON responses carry `accessToken`+`user` only. Reuse of a rotated token revokes ALL the user's sessions. Frontend `apiClient` uses `withCredentials` + backend CORS AllowCredentials for localhost:3000 | P1-BE-2; skill bmm-app-router-multitenancy; middleware route protection reads the same cookie |
+| 2026-11-02 | **JWT validation reads config inside the lazy JwtBearer options lambda** (not at registration) — user-secrets load in the test host too, so eager reads minted/validated with different keys | P1-BE-2 test-host lesson; 15-min access tokens, HMAC key in Api user-secrets, claims sub/phone/name/globalRole + Role=SuperAdmin |
+| 2026-11-02 | **Npgsql rejects libpq URI strings** — Infrastructure `ConvertToNpgsqlConnectionString` converts Neon URIs (postgresql://user:pass@host/db → keyword form; Uri.Port −1 → 5432; drops libpq-only params like channel_binding; forces SSL Mode=Require). `dotnet ef database update --connection` mangles `=` — pass the connection via user-secrets instead (README documents the swap-apply-restore flow) | P1-BE-3; migration `Initial_Identity_Mess` applied to Neon production branch via unpooled URL |
+| 2026-11-02 | **Tenant resolution is a MediatR pipeline behavior** (Validation → Tenant order): `ITenantRequest` marker + X-Mess-Id header → membership check → scoped `TenantContext`; missing header 400 TENANT_REQUIRED, non-member 403 FORBIDDEN, SuperAdmin bypasses. `HasQueryFilter(MessId)` on MemberMess + InviteLinks; cross-mess queries use `IgnoreQueryFilters()` consciously | P1-BE-4/5; skills bmm-cqrs-mediatr + bmm-efcore-multitenancy |
+| 2026-11-02 | Members workflow: single-use invite tokens (7d expiry, url-safe), join → **Pending** membership → manager approve/reject; role changes + leave/remove guarded by "at least one active Meal Manager" (409). Handlers inject `IApplicationContext` directly for Phase 1 (repository layer deferred) | P1-BE-4; pragmatic layering note |
+| 2026-11-02 | **Test strategy**: sqlite-in-memory `WebApplicationFactory` e2e suite (runs everywhere; EF10 needs `IDbContextOptionsConfiguration<T>` removal, and each cookie-carrying stage needs a FRESH HttpClient — the test client caches cookies per instance) + TestContainers Postgres isolation suite as `[SkippableFact]` (runs in CI where Docker exists, skips locally). OTP dev code returned in JSON only in Development (SMS arrives Phase 4) | P1-BE-5; live e2e against Neon also verified via curl |
+| 2026-11-02 | **App shell lives at `(dashboard)/dashboard/[messId]/layout.tsx`** (deviation from the skill's `(dashboard)/layout.tsx` — the shell's nav/switcher need the active mess, which only exists under `[messId]`). Next 16 cacheComponents: `params`/`useParams` reads must sit inside `<Suspense>`; `/dashboard` is the mess selector page | P1-FE-3; MessProvider validates GUID, renders no-access screen, installs the api-client mess-id source, drops old mess caches on switch |
+| 2026-11-02 | Health split: `/health` = live-tag checks only (liveness); `/health/ready` = all incl. real Npgsql ping to Neon (converted string). Middleware (Edge) protects `/dashboard/*` + `/invite/*` via the `bmm_refresh` cookie → `/login?next=` | P1-BE-2 + P1-FE-4 |
+| 2026-11-02 | **Guest meals fold into the B/L/D counts** (no separate guest column): `DailyMeal` carries only Breakfast/Lunch/Dinner `decimal(4,1)` (0–10, 0.5 steps); a host marks e.g. 2.0 lunch when a guest joins. `totalUnits = B+L+D` in the DTO | User decision 2026-11-02 (P2 planning); `API_CONVENTIONS.md` §5 wording "guests included" honored literally |
+| 2026-11-02 | **`POST /api/meals` is a bulk upsert returning 200** (not 201): one date + N member entries, re-submit overwrites via unique index `(MessId, MemberId, Date)`. Members may submit only their own memberId (403 otherwise); managers anyone (targets must be active members → else 404) | P2-BE-1; batch + overwrite semantics make Location/201 meaningless |
+| 2026-11-02 | **Bazar line shape: `Quantity` (9,2, default 1) + `Price` (18,2, unit price); line total = Quantity × Price computed in DTO** (never stored). POST accepts 1–50 items sharing date+buyer → one row per item. Bazar/utility/utility-type/deposit-approval writes are manager-only; members read | P2-BE-2; supports the P2-FE-3 drawer (name/qty/price rows, auto-sum) |
+| 2026-11-02 | **UtilityTypes routes: `POST/GET /api/utility-types`, `PUT/DELETE /api/utility-types/{id}`** — unique `(MessId, Name)` (case-insensitive check → 409), `IsActive` soft-disable; DELETE → 409 when payments reference the type | P2-BE-3/4; routes were undefined in BACKEND_PROJECT_PLAN §6 (only payments endpoints existed) |
+| 2026-11-02 | **Deposits routes: `POST/GET /api/deposits`, `PUT /api/deposits/{id}/approve \| reject`** — member-created deposits start `Pending`; **manager-created deposits auto-approve** (ApprovedBy = creator). Only Pending → approve/reject; any other transition → 409. Rejection leaves ApprovedBy/ApprovedAt null | User decision 2026-11-02 (P2 planning); routes were undefined in the plan |
 
 ## Blockers / Open Questions
 

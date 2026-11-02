@@ -44,7 +44,9 @@ Missing/invalid token → `401`. Valid token but not a member of the `X-Mess-Id`
 | `sortDir` | `desc` | `asc` \| `desc` |
 | `from`, `to` | — | Inclusive date range, `YYYY-MM-DD` (ISO 8601); `from ≤ to` |
 
-Sort whitelists (extend per endpoint as features land): meals → `date`; bazar expenses → `date`, `price`; deposits → `date`, `amount`.
+Sort whitelists: meals → `date`; bazar expenses → `date`, `price` (line total = quantity × unit price); utility payments → `date` (payment date); deposits → `date`, `amount`. Utility types list is name-ordered (no `sortBy`).
+
+Additional per-endpoint filters (beyond `from`/`to`): meals → `memberId`; bazar → `buyerMemberId`; utility payments → `utilityTypeId`; deposits → `memberId`, `status` (`Pending` | `Approved` | `Rejected`).
 
 ## 4. Error envelope
 
@@ -91,10 +93,13 @@ Every non-2xx response is `ApiErrorResponse` — ProblemDetails-shaped, machine-
 
 Auth (Phase 1): `POST /api/auth/login | refresh | logout`.
 Messes: `POST/GET /api/messes`, `PUT/DELETE /api/messes/{id}`.
-Members: `POST /api/members/join | invite`, `PUT /api/members/{id}/role`.
-Meals: `POST/GET /api/meals`. Bazar: `POST/GET /api/expenses/bazar`.
-Utilities: `POST/GET /api/expenses/utility`.
-Summary: `GET /api/summary/messes/{messId}`.
+Members: `POST /api/members/join | invite`, `PUT /api/members/{id}/role | approve | reject`, `DELETE /api/members/{id}` (remove; self = leave).
+Meals (Phase 2): `POST /api/meals` — **bulk upsert** of one date's entries (`{date, entries:[{memberId, breakfast, lunch, dinner}]}`) → `200 OK` + resulting rows (upsert, not a pure create; re-submitting a member/date overwrites). Members may only submit their own `memberId`; managers anyone. `GET /api/meals`.
+Bazar (Phase 2): `POST /api/expenses/bazar` — one row per item sharing `{date, buyerMemberId?}`; buyer defaults to the caller; manager-only. `GET /api/expenses/bazar`.
+Utility types (Phase 2): `POST/GET /api/utility-types`, `PUT/DELETE /api/utility-types/{id}` — manager-only; duplicate name per mess → `409`; delete of a type with payments → `409` (deactivate via `PUT isActive=false` instead).
+Utility payments (Phase 2): `POST/GET /api/expenses/utility` — manager-only writes, payments must reference a type of the same mess.
+Deposits (Phase 2): `POST /api/deposits` (member → own deposit, starts `Pending`; manager → any member, auto-`Approved`), `GET /api/deposits`, `PUT /api/deposits/{id}/approve | reject` — manager-only, only `Pending` deposits transition (else `409`).
+Summary: `GET /api/summary/messes/{messId}` (Phase 3).
 
 ## 7. Non-goals / later additions
 

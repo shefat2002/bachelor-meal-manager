@@ -17,6 +17,9 @@ export function setActiveMessIdSource(getter: () => string | null): void {
 export const apiClient = axios.create({
   baseURL: env.apiBaseUrl,
   headers: { "Content-Type": "application/json" },
+  // Cross-origin: the API's HttpOnly bmm_refresh cookie (set by /api/auth/*) must be
+  // storable/sendable — requires credentials on both sides (CORS AllowCredentials).
+  withCredentials: true,
 });
 
 apiClient.interceptors.request.use((config) => {
