@@ -98,8 +98,8 @@ Meals (Phase 2): `POST /api/meals` — **bulk upsert** of one date's entries (`{
 Bazar (Phase 2): `POST /api/expenses/bazar` — one row per item sharing `{date, buyerMemberId?}`; buyer defaults to the caller; manager-only. `GET /api/expenses/bazar`.
 Utility types (Phase 2): `POST/GET /api/utility-types`, `PUT/DELETE /api/utility-types/{id}` — manager-only; duplicate name per mess → `409`; delete of a type with payments → `409` (deactivate via `PUT isActive=false` instead).
 Utility payments (Phase 2): `POST/GET /api/expenses/utility` — manager-only writes, payments must reference a type of the same mess.
-Deposits (Phase 2): `POST /api/deposits` (member → own deposit, starts `Pending`; manager → any member, auto-`Approved`), `GET /api/deposits`, `PUT /api/deposits/{id}/approve | reject` — manager-only, only `Pending` deposits transition (else `409`).
-Summary: `GET /api/summary/messes/{messId}` (Phase 3).
+Deposits (Phase 2): `POST /api/deposits` (member → own deposit, starts `Pending`; manager → any member, auto-`Approved`), `GET /api/deposits`, `PUT /api/deposits/{id}/approve | reject` — manager-only, only `Pending` deposits transition (else `409`). **Month lock**: while a mess-month is locked, every write dated in it (`POST /api/meals`, bazar/utility/deposit creates, deposit approval) → `409 CONFLICT`.
+Summary (Phase 3): `GET /api/summary/messes/{messId}?year=&month=` — the §5 equations, grain-computed and cached; the path `messId` **must equal** the `X-Mess-Id` tenant (else `404`); any active member may read; `year`/`month` default to the current UTC month; locked months serve the snapshot captured at lock time (`locked: true`). Month lock: `PUT /api/summary/messes/{messId}/month-lock` body `{year, month, locked}` — manager-only, `204`.
 
 ## 7. Non-goals / later additions
 
