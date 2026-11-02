@@ -1,9 +1,10 @@
-using Microsoft.AspNetCore.Mvc.Testing;
+using System.Net;
+using FluentAssertions;
 
 namespace MealManager.IntegrationTests;
 
-public class HealthEndpointTests(WebApplicationFactory<Program> factory)
-    : IClassFixture<WebApplicationFactory<Program>>
+/// <summary>Health endpoints via the sqlite factory (readiness has no Postgres dependency there).</summary>
+public sealed class HealthEndpointTests(BmmApiFactory factory) : IClassFixture<BmmApiFactory>
 {
     [Theory]
     [InlineData("/health")]
@@ -14,7 +15,7 @@ public class HealthEndpointTests(WebApplicationFactory<Program> factory)
 
         var response = await client.GetAsync(path);
 
-        response.EnsureSuccessStatusCode();
-        Assert.Equal("Healthy", await response.Content.ReadAsStringAsync());
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await response.Content.ReadAsStringAsync()).Should().Be("Healthy");
     }
 }
