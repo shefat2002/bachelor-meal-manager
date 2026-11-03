@@ -1,6 +1,6 @@
 namespace MealManager.Application.Features.Auth;
 
-public record AuthUserDto(Guid Id, string Name, string Phone, string GlobalRole);
+public record AuthUserDto(Guid Id, string Name, string Phone, string GlobalRole, string? Email = null);
 
 /// <summary>Issued by register/login/otp-verify/refresh. The refresh token travels server-side only —
 /// controllers put it in the HttpOnly cookie and strip it from the JSON response.</summary>

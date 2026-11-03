@@ -26,6 +26,14 @@ public interface IApplicationContext
 
     DbSet<MonthLock> MonthLocks { get; }
 
+    DbSet<Domain.Notification> Notifications { get; }
+
+    DbSet<ReportJob> ReportJobs { get; }
+
+    DbSet<ReportFile> ReportFiles { get; }
+
+    DbSet<ProcessedMessage> ProcessedMessages { get; }
+
     DbSet<RefreshToken> RefreshTokens { get; }
 
     DbSet<OtpCode> OtpCodes { get; }

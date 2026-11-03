@@ -82,6 +82,6 @@ public static class AuthTokenIssuer
         return new AuthResult(
             accessToken,
             refresh,
-            new AuthUserDto(user.Id, user.Name, user.PhoneNumber ?? string.Empty, roles.Contains(AuthRoles.SuperAdmin) ? "superAdmin" : "user"));
+            new AuthUserDto(user.Id, user.Name, user.PhoneNumber ?? string.Empty, roles.Contains(AuthRoles.SuperAdmin) ? "superAdmin" : "user", user.Email));
     }
 }

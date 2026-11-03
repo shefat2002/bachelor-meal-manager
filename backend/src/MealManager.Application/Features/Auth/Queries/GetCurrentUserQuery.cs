@@ -30,6 +30,7 @@ public sealed class GetCurrentUserQueryHandler(
             user.Id,
             user.Name,
             user.PhoneNumber ?? string.Empty,
-            roles.Contains(AuthRoles.SuperAdmin) ? "superAdmin" : "user");
+            roles.Contains(AuthRoles.SuperAdmin) ? "superAdmin" : "user",
+            user.Email);
     }
 }
