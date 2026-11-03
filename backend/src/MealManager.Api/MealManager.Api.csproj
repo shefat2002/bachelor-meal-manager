@@ -5,6 +5,7 @@
     <ProjectReference Include="..\MealManager.Infrastructure\MealManager.Infrastructure.csproj" />
     <ProjectReference Include="..\MealManager.ServiceDefaults\MealManager.ServiceDefaults.csproj" />
     <ProjectReference Include="..\MealManager.Grains\MealManager.Grains.csproj" />
+    <ProjectReference Include="..\MealManager.Workers\MealManager.Workers.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -14,6 +15,8 @@
     </PackageReference>
     <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="10.0.14" />
     <PackageReference Include="Microsoft.Orleans.Server" Version="10.4.2" />
+    <PackageReference Include="prometheus-net.AspNetCore" Version="8.2.1" />
+    <PackageReference Include="Serilog.AspNetCore" Version="10.0.0" />
   </ItemGroup>
 
   <PropertyGroup>

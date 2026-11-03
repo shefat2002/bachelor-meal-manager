@@ -28,6 +28,14 @@ public class ApplicationContext(
 
     public DbSet<MonthLock> MonthLocks => Set<MonthLock>();
 
+    public DbSet<Notification> Notifications => Set<Notification>();
+
+    public DbSet<ReportJob> ReportJobs => Set<ReportJob>();
+
+    public DbSet<ReportFile> ReportFiles => Set<ReportFile>();
+
+    public DbSet<ProcessedMessage> ProcessedMessages => Set<ProcessedMessage>();
+
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
     public DbSet<OtpCode> OtpCodes => Set<OtpCode>();
@@ -156,6 +164,36 @@ public class ApplicationContext(
             e.HasIndex(l => new { l.MessId, l.Year, l.Month }).IsUnique();
             e.HasQueryFilter(l => l.MessId == tenant.MessId);
             e.HasOne<Mess>().WithMany().HasForeignKey(l => l.MessId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<Notification>(e =>
+        {
+            // User inbox — deliberately NOT tenant-filtered (read across all messes).
+            e.Property(n => n.Title).HasMaxLength(200);
+            e.Property(n => n.Body).HasMaxLength(1000);
+            e.HasIndex(n => new { n.UserId, n.CreatedAt });
+        });
+
+        b.Entity<ReportJob>(e =>
+        {
+            e.Property(j => j.Status).HasConversion<string>().HasMaxLength(20);
+            e.Property(j => j.Error).HasMaxLength(1000);
+            e.HasIndex(j => new { j.MessId, j.Year, j.Month });
+            e.HasQueryFilter(j => j.MessId == tenant.MessId);
+            e.HasOne<Mess>().WithMany().HasForeignKey(j => j.MessId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<ReportFile>(e =>
+        {
+            // byte[] → PostgreSQL bytea; sqlite blob. One artifact per job so far.
+            e.HasIndex(f => f.ReportJobId).IsUnique();
+            e.HasOne(f => f.ReportJob).WithMany().HasForeignKey(f => f.ReportJobId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<ProcessedMessage>(e =>
+        {
+            e.HasKey(pm => pm.MessageId);
         });
     }
 }
